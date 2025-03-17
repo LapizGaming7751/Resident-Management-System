@@ -113,9 +113,10 @@ switch ($method) {
                         }
                         break;
                     case "log":
-                        $sql = "SELECT logs.id, logs.token, logs.scan_time, logs.scan_by, security.user AS scanner_username
+                        $sql = "SELECT logs.id, logs.token, logs.scan_time, logs.scan_type, logs.scan_by, security.user AS scanner_username, codes.intended_visitor AS intended_visitor
                         FROM logs
-                        LEFT JOIN security ON logs.scan_by = security.id";
+                        LEFT JOIN security ON logs.scan_by = security.id
+                        LEFT JOIN codes ON logs.token = codes.token";
                         $result = $conn->query($sql);
 
                         if ($result) {
@@ -238,6 +239,7 @@ switch ($method) {
             // Count previous scans
             $scanCountQuery = $conn->query("SELECT COUNT(*) as count FROM logs WHERE token = '$token'");
             $scanCount = (int)$scanCountQuery->fetch_assoc()['count'];
+            $scan_type = $scanCount === 0 ? "In" : "Out";
 
             if ($scanCount >= 2) {
                 echo json_encode(["message" => "Token already used twice (expired)."], JSON_PRETTY_PRINT);
@@ -245,7 +247,7 @@ switch ($method) {
             }
 
             // Insert scan log
-            $conn->query("INSERT INTO logs (token, scan_time, scan_by) VALUES ('$token', '$time', '$scan_by')");
+            $conn->query("INSERT INTO logs (token, scan_time, scan_type, scan_by) VALUES ('$token', '$time', '$scan_type','$scan_by')");
 
             if ($scanCount === 0) {
                 echo json_encode(["message" => "Login recorded."]);

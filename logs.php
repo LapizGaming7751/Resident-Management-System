@@ -14,7 +14,9 @@
                 <tr>
                     <th>ID</th>
                     <th>Token</th>
+                    <th>Intended Visitor</th>
                     <th>Scan Time</th>
+                    <th>Scan Type</th>
                     <th>Responsible Scanner</th>
                 </tr>
             </thead>
@@ -42,7 +44,9 @@
                         entry.innerHTML = `
                             <td> ${log.id} </td>
                             <td> ${log.token} </td>
+                            <td> ${log.intended_visitor} </td>
                             <td> ${log.scan_time} </td>
+                            <td> ${log.scan_type} </td>
                             <td> ${log.scanner_username} </td>
                             `;
                         container.appendChild(entry);
