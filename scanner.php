@@ -34,43 +34,18 @@ if (isset($_SESSION['type']) && $_SESSION['type']=="security"){
                 scanner.stop(); // Stop scanning after a successful scan
                 const API_URL = 'http://localhost/Finals_CheckInSystem/api.php';
                 
-                const token = tokenInput.value;
-                const type = "guest";
-                const scan_by = <?=$_SESSION['id']?>;
-
-                fetch(API_URL, {
-                    method: 'POST',
-                    headers: {'Content-type':'application/json'},
-                    body: JSON.stringify({ type, token, scan_by })
-                })
-                .then(response => {
-                if (!response.ok) {
-                        throw new Error('Unable to find guest');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    alert(data.message);
-                    location.reload();
-                })
-                .catch(error => {
-                    console.error('Error finding guest:', error);
-                });
+                scanCode(tokenInput.value);
             },{
                 highlightScanRegion: true,
                 highlightCodeOutline: true
             });
 
             scanner.start();
-        </script>
 
-        <script>
             const API_URL = 'http://localhost/Finals_CheckInSystem/api.php';
 
-            document.getElementById("scannerForm").addEventListener("submit", e =>{
-                e.preventDefault();
-
-                const token = document.getElementById('token').value;
+            function scanCode(token){
+                
                 const scan_by = <?=$_SESSION['id']?>;
                 const type = "guest";
 
@@ -92,6 +67,11 @@ if (isset($_SESSION['type']) && $_SESSION['type']=="security"){
                 .catch(error => {
                     console.error('Error finding guest:', error);
                 });
+            }
+
+            document.getElementById("scannerForm").addEventListener("submit", e =>{
+                e.preventDefault();
+                scanCode(document.getElementById('token').value);
             });
         </script>
     </body>

@@ -45,7 +45,7 @@ switch ($method) {
             if(isset($_GET['created_by'])){
                 $id = $_GET['created_by'];
 
-                $sql = "SELECT * FROM codes WHERE created_by = '$id'";
+                $sql = "SELECT * FROM codes WHERE created_by = '$id' AND expiry >= '$time'";
                 $result = $conn->query($sql);
 
                 if ($result) {
