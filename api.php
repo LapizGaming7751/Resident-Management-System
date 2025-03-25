@@ -7,9 +7,9 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 $host = 'localhost';
-$db = 'finals_scanner';
-$db_user = 'root';
-$db_pass = '';
+$db = 'u222436386_finals_scanner';
+$db_user = 'u222436386_finals_scanner';
+$db_pass = 'Finals_Scanner123';
 
 $conn = new mysqli($host, $db_user, $db_pass, $db);
 

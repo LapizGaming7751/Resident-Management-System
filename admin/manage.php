@@ -32,7 +32,7 @@
     </body>
 
     <script>
-        const API_URL = 'http://localhost/Finals_CheckInSystem/api.php';
+        const API_URL = 'https://siewyaoying.synergy-college.org/Finals_CheckInSystem/api.php';
 
         function getResidents(){
             fetch(`${API_URL}?type=admin&fetch=resident`)

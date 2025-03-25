@@ -32,7 +32,7 @@ if (isset($_SESSION['type']) && $_SESSION['type']=="security"){
             const scanner = new QrScanner(video, result => {
                 tokenInput.value = result.data;
                 scanner.stop(); // Stop scanning after a successful scan
-                const API_URL = 'http://localhost/Finals_CheckInSystem/api.php';
+                const API_URL = 'https://siewyaoying.synergy-college.org/Finals_CheckInSystem/api.php';
                 
                 scanCode(tokenInput.value);
             },{
@@ -42,7 +42,7 @@ if (isset($_SESSION['type']) && $_SESSION['type']=="security"){
 
             scanner.start();
 
-            const API_URL = 'http://localhost/Finals_CheckInSystem/api.php';
+            const API_URL = 'https://siewyaoying.synergy-college.org/Finals_CheckInSystem/api.php';
 
             function scanCode(token){
                 
