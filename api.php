@@ -113,7 +113,7 @@ switch ($method) {
                         }
                         break;
                     case "log":
-                        $sql = "SELECT logs.id, logs.token, logs.scan_time, logs.scan_type, logs.scan_by, security.user AS scanner_username, codes.intended_visitor AS intended_visitor
+                        $sql = "SELECT logs.id, logs.token, logs.scan_time, logs.scan_type, logs.scan_by, security.user AS scanner_username, codes.intended_visitor AS intended_visitor, codes.plate_id AS plate
                         FROM logs
                         LEFT JOIN security ON logs.scan_by = security.id
                         LEFT JOIN codes ON logs.token = codes.token";

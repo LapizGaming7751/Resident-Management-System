@@ -4,8 +4,8 @@
         <link rel="stylesheet" href="../css.css">
     </head>
     <body>
-        <h1>Login Resident</h1>
         <form id="loginForm">
+            <h1>Login Resident</h1>
             <label for="user">Username: </label>
             <input type="text" name="user" id="user"/><br/>
             <label for="pass">Password: </label>

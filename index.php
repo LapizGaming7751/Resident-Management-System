@@ -5,8 +5,9 @@
     </head>
     <body>
         <div class="cd-1">
-        <h1>Login Security Guard</h1>
+        
             <form id="loginForm">
+                <h1>Login Security Guard</h1>
                 <label for="user">Username: </label>
                 <input type="text" name="user" id="user"/><br/>
                 <label for="pass">Password: </label>

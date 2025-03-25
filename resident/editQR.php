@@ -6,9 +6,10 @@
         <link rel="stylesheet" href="../css.css">
     </head>
     <body>
-        <h1>Edit Invite</h1>
+        
 
         <form id="editForm">
+            <h1>Edit Invite</h1>
             <img src="../qr/<?=$_GET['token']?>.png" alt="">
             <label for="guest_name">Guest Name: </label>
             <input type="text" name="guest_name" id="guest_name" value="<?=$_GET['visitor']?>"><br/>
