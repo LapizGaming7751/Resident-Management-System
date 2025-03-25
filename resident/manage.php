@@ -20,7 +20,7 @@
     </body>
 
     <script>
-        const API_URL = 'http://localhost/Finals_CheckInSystem/api.php';
+        const API_URL = 'https://siewyaoying.synergy-college.org/Finals_CheckInSystem/api.php';
 
         function getQR(){
             fetch(`${API_URL}?type=resident&created_by=<?=$_SESSION['id']?>`)
