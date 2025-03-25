@@ -27,13 +27,14 @@ if (isset($_SESSION['type']) && $_SESSION['type']=="security"){
 
         <script type="module">
             import QrScanner from './node_modules/qr-scanner/qr-scanner.min.js';
-
+            
+            const API_URL = 'https://siewyaoying.synergy-college.org/Finals_CheckInSystem/api.php';
             const video = document.getElementById('qr-video');
             const tokenInput = document.getElementById('token');
             const scanner = new QrScanner(video, result => {
                 tokenInput.value = result.data;
                 scanner.stop(); // Stop scanning after a successful scan
-                const API_URL = 'https://siewyaoying.synergy-college.org/Finals_CheckInSystem/api.php';
+                
                 
                 scanCode(tokenInput.value);
             },{
@@ -42,8 +43,6 @@ if (isset($_SESSION['type']) && $_SESSION['type']=="security"){
             });
 
             scanner.start();
-
-            const API_URL = 'https://siewyaoying.synergy-college.org/Finals_CheckInSystem/api.php';
 
             function scanCode(token){
                 
