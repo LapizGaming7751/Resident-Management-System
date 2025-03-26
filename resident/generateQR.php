@@ -22,7 +22,7 @@
     </body>
 
     <script>
-        const API_URL = 'https://siewyaoying.synergy-college.org/Finals_CheckInSystem/api.php';
+        const API_URL = 'http://localhost/Finals_CheckInSystem%20ai/api.php';
 
         document.getElementById("generationForm").addEventListener("submit", e =>{
             e.preventDefault();

@@ -7,9 +7,9 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 $host = 'localhost';
-$db = 'u222436386_finals_scanner';
-$db_user = 'u222436386_finals_scanner';
-$db_pass = 'Finals_Scanner123';
+$db = 'finals_scanner';
+$db_user = 'root';
+$db_pass = '';
 
 $conn = new mysqli($host, $db_user, $db_pass, $db);
 
@@ -47,7 +47,7 @@ switch ($method) {
 
                 if(isset($_GET['fetch']) && $_GET['fetch'] == 'notifications') {
                     // Fetch notifications for resident
-                    $sql = "SELECT * FROM notifications WHERE resident_id = '$id' ORDER BY created_at DESC";
+                    $sql = "SELECT * FROM notifications WHERE resident_id = '$id' AND is_read = 0 ORDER BY created_at DESC";
                     $result = $conn->query($sql);
 
                     if ($result) {
@@ -270,7 +270,7 @@ switch ($method) {
                 // Create notification for resident when visitor arrives
                 $resident_id = $code['created_by'];
                 $visitor_name = $code['intended_visitor'];
-                $message = "Your visitor $visitor_name has arrived at $time";
+                $message = "Your visitor <b>$visitor_name</b> has arrived at $time";
                 $conn->query("INSERT INTO notifications (resident_id, message) VALUES ('$resident_id', '$message')");
                 
                 echo json_encode(["message" => "Login recorded."]);
@@ -283,19 +283,31 @@ switch ($method) {
         break;
     case "PUT":
         if($requestData['type']=="resident"){
-            $id = $requestData['id'];
-            $name = $requestData['name'];
-            $plate = $requestData['plate'];
-            $expiry = $requestData['expiry'];
+            if(isset($requestData['id']) && !isset($requestData['name'])) {
+                // Handle marking notification as read
+                $id = $requestData['id'];
+                $sql = "UPDATE notifications SET is_read = 1 WHERE id = '$id'";
+                
+                if ($conn->query($sql)){
+                    echo json_encode(["message" => "Notification marked as read","error"=>false]);
+                }else{
+                    echo json_encode(["message" => "Failed to mark notification as read: ".$conn->error,"error"=>true]);
+                }
+            } else {
+                // Handle editing QR code
+                $id = $requestData['id'];
+                $name = $requestData['name'];
+                $plate = $requestData['plate'];
+                $expiry = $requestData['expiry'];
 
-            $sql = "UPDATE `codes` SET `expiry`='$expiry',`intended_visitor`='$name',`plate_id`='$plate' WHERE `id` = '$id'";
+                $sql = "UPDATE `codes` SET `expiry`='$expiry',`intended_visitor`='$name',`plate_id`='$plate' WHERE `id` = '$id'";
 
-            if ($conn->query($sql)){
-                echo json_encode(["message" => "QR Code Editted","error"=>false]);
-            }else{
-                echo json_encode(["message" => "Failed to edit QR Code: ".$conn->error,"error"=>true]);
+                if ($conn->query($sql)){
+                    echo json_encode(["message" => "QR Code Editted","error"=>false]);
+                }else{
+                    echo json_encode(["message" => "Failed to edit QR Code: ".$conn->error,"error"=>true]);
+                }
             }
-
         }elseif($requestData['type']=="admin"){
 
         }else{
