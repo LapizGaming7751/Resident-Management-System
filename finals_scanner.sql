@@ -108,6 +108,21 @@ INSERT INTO `residents` (`id`, `user`, `pass`, `room_code`) VALUES
 (2, 'Testing2', '$2a$12$QGQxxtUsddp462cR3YSnlO8CnXebddTD65muXaNA5SPMTy99Lkqwa', '13-04-B5');
 
 --
+-- Table structure for table `notifications`
+--
+
+CREATE TABLE `notifications` (
+  `id` int(255) NOT NULL AUTO_INCREMENT,
+  `resident_id` int(255) NOT NULL,
+  `message` text NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `is_read` tinyint(1) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `resident_id` (`resident_id`),
+  CONSTRAINT `notifications_ibfk_1` FOREIGN KEY (`resident_id`) REFERENCES `residents` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
 -- Indexes for dumped tables
 --
 

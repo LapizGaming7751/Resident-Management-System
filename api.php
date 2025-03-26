@@ -45,17 +45,34 @@ switch ($method) {
             if(isset($_GET['created_by'])){
                 $id = $_GET['created_by'];
 
-                $sql = "SELECT * FROM codes WHERE created_by = '$id'";
-                $result = $conn->query($sql);
+                if(isset($_GET['fetch']) && $_GET['fetch'] == 'notifications') {
+                    // Fetch notifications for resident
+                    $sql = "SELECT * FROM notifications WHERE resident_id = '$id' ORDER BY created_at DESC";
+                    $result = $conn->query($sql);
 
-                if ($result) {
-                    while ($row = $result->fetch_assoc()) {
-                        $qr[] = $row;
+                    if ($result) {
+                        $notifications = [];
+                        while ($row = $result->fetch_assoc()) {
+                            $notifications[] = $row;
+                        }
+                        echo json_encode($notifications);
+                    } else {
+                        http_response_code(500);
+                        echo json_encode(["message" => "Error fetching notifications: " . $conn->error,"error"=>true]);
                     }
-                    echo json_encode($qr);
                 } else {
-                    http_response_code(500);
-                    echo json_encode(["message" => "Error fetching QR codes: " . $conn->error,"error"=>true]);
+                    $sql = "SELECT * FROM codes WHERE created_by = '$id'";
+                    $result = $conn->query($sql);
+
+                    if ($result) {
+                        while ($row = $result->fetch_assoc()) {
+                            $qr[] = $row;
+                        }
+                        echo json_encode($qr);
+                    } else {
+                        http_response_code(500);
+                        echo json_encode(["message" => "Error fetching QR codes: " . $conn->error,"error"=>true]);
+                    }
                 }
             }else{
                 $user = $_GET["user"] ?? "";
@@ -250,6 +267,12 @@ switch ($method) {
             $conn->query("INSERT INTO logs (token, scan_time, scan_type, scan_by) VALUES ('$token', '$time', '$scan_type','$scan_by')");
 
             if ($scanCount === 0) {
+                // Create notification for resident when visitor arrives
+                $resident_id = $code['created_by'];
+                $visitor_name = $code['intended_visitor'];
+                $message = "Your visitor $visitor_name has arrived at $time";
+                $conn->query("INSERT INTO notifications (resident_id, message) VALUES ('$resident_id', '$message')");
+                
                 echo json_encode(["message" => "Login recorded."]);
             } elseif ($scanCount === 1) {
                 echo json_encode(["message" => "Logout recorded."]);
