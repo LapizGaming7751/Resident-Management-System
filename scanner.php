@@ -22,12 +22,13 @@ if (isset($_SESSION['type']) && $_SESSION['type']=="security"){
         </form>
 
         <button onclick="window.location.href='logs.php'">View Logs</button>
+        <button onclick="window.location.href='security_chat.php'">Chat with Residents</button>
         <button onclick="window.location.href='logout.php'">Logout</button>
 
         <script type="module">
             import QrScanner from './node_modules/qr-scanner/qr-scanner.min.js';
             
-            const API_URL = 'http://localhost/Finals_CheckInSystem%20ai/api.php';
+            const API_URL = 'https://siewyaoying.synergy-college.org/Finals_CheckInSystem/api.php';
             
             const video = document.getElementById('qr-video');
             const tokenInput = document.getElementById('token');

@@ -9,6 +9,7 @@
         <h1>Welcome, <?=$_SESSION['user']?></h1>
         
         <button onclick="window.location.href='generateQR.php';">Generate Invite</button>
+        <button onclick="window.location.href='chat.php';">Chat with Security</button>
         <button onclick="window.location.href='logout.php';">Logout</button>
         
         <h2>Notifications</h2>
@@ -24,7 +25,7 @@
     </body>
 
     <script>
-        const API_URL = 'http://localhost/Finals_CheckInSystem%20ai/api.php';
+        const API_URL = 'https://siewyaoying.synergy-college.org/Finals_CheckInSystem/api.php';
 
         async function getNotifications() {
             try {
