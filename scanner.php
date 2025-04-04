@@ -22,6 +22,7 @@ if (isset($_SESSION['type']) && $_SESSION['type']=="security"){
         </form>
 
         <button onclick="window.location.href='logs.php'">View Logs</button>
+        <button onclick="window.location.href='chat_security.php'">Chat with Residents</button>
         <button onclick="window.location.href='logout.php'">Logout</button>
 
         <script type="module">

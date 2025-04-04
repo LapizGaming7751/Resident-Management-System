@@ -9,6 +9,7 @@
         <h1>Welcome, <?=$_SESSION['user']?></h1>
         
         <button onclick="window.location.href='generateQR.php';">Generate Invite</button>
+        <button onclick="window.location.href='chat_resident.php';">Chat with Security</button>
         <button onclick="window.location.href='logout.php';">Logout</button>
         
         <h2>Notifications</h2>

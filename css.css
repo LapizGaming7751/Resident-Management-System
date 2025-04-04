@@ -1,143 +1,225 @@
-/* Light Blue Theme for Index and Resident Pages */
-body {
-    margin: 0;
-    padding: 0;
-    font-family: "Agency FB", Arial, sans-serif;
-    background-color: #e0f7ff;
+��/*ModernLightBlueTheme*/
+:root{
+--primary-color:#007bff;
+--secondary-color:#e0f7ff;
+--text-color:#333;
+--card-shadow:04px6pxrgba(0,0,0,0.1);
+--transition:all0.3sease;
 }
 
-/* Centered Panel Form */
-form {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    padding: 20px;
-    max-width: 400px;
-    width: 90%;
-    margin: 100px auto;
+body{
+margin:0;
+padding:0;
+font-family:'SegoeUI',Tahoma,Geneva,Verdana,sans-serif;
+background-color:var(--secondary-color);
+color:var(--text-color);
+line-height:1.6;
 }
 
-/* Input fields and buttons */
-input[type="text"], input[type="password"], button {
-    width: 100%;
-    padding: 10px;
-    margin: 10px 0;
-    border: 1px solid #b3e0f2;
-    border-radius: 6px;
-    box-sizing: border-box;
+/*NavigationBar*/
+.navbar{
+background-color:white;
+box-shadow:var(--card-shadow);
+padding:1rem2rem;
+display:flex;
+justify-content:space-between;
+align-items:center;
+position:sticky;
+top:0;
+z-index:1000;
 }
 
-button {
-    background-color: #007bff;
-    color: white;
-    border: none;
-    cursor: pointer;
-    transition: background-color 0.2s;
+.nav-buttons{
+display:flex;
+gap:1rem;
 }
 
-button:hover {
-    background-color: #0056b3;
+.nav-button{
+background-color:var(--primary-color);
+color:white;
+border:none;
+padding:0.5rem1rem;
+border-radius:4px;
+cursor:pointer;
+transition:var(--transition);
+text-decoration:none;
+font-weight:500;
 }
 
-/* QR Code Panels for manage.php */
-div#qr>div {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    padding: 20px;
-    margin: 10px;
-    display: inline-block;
-    text-align: center;
-    max-width: 200px;
+.nav-button:hover{
+background-color:#0056b3;
+transform:translateY(-2px);
 }
 
-div#qr>div img {
-    width: 100%;
-    border-radius: 6px;
-    margin-bottom: 10px;
+/*CenteredPanelForm*/
+form{
+background:white;
+border-radius:12px;
+box-shadow:var(--card-shadow);
+padding:2rem;
+max-width:400px;
+width:90%;
+margin:2remauto;
 }
 
-form img{
-    display: block;
-    margin: 0 auto 20px;
-    max-width: 150px;
+/*Inputfields*/
+input[type="text"],
+input[type="password"]{
+width:100%;
+padding:0.8rem;
+margin:0.5rem0;
+border:1pxsolid#b3e0f2;
+border-radius:6px;
+box-sizing:border-box;
+transition:var(--transition);
 }
 
-/* Video inside input plate */
-video#qr-video {
-    width: 100%;
-    border: 1px solid #b3e0f2;
-    border-radius: 6px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    margin: 10px 0;
-    box-sizing: border-box;
+input[type="text"]:focus,
+input[type="password"]:focus{
+outline:none;
+border-color:var(--primary-color);
+box-shadow:0002pxrgba(0,123,255,0.25);
 }
 
-/* Table Styles */
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 20px 0;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+/*QRCodeCards*/
+.qr-card{
+background:white;
+border-radius:12px;
+box-shadow:var(--card-shadow);
+padding:1.5rem;
+margin:1rem;
+display:inline-block;
+text-align:center;
+max-width:250px;
+transition:var(--transition);
 }
 
-/* Header Row */
-thead tr {
-    background-color: #007bff;
-    color: white;
-    text-align: left;
+.qr-card:hover{
+transform:translateY(-5px);
+box-shadow:06px12pxrgba(0,0,0,0.15);
 }
 
-/* Alternating Rows */
-tbody tr:nth-child(odd) {
-    background-color: white;
+.qr-cardimg{
+width:100%;
+border-radius:8px;
+margin-bottom:1rem;
 }
 
-tbody tr:nth-child(even) {
-    background-color: #b3e0f2;
+/*ChatInterface*/
+.chat-container{
+background:white;
+border-radius:12px;
+box-shadow:var(--card-shadow);
+padding:1.5rem;
+margin:1rem;
+height:calc(100vh-200px);
+display:flex;
+flex-direction:column;
 }
 
-/* Table Cells */
-th, td {
-    padding: 12px;
-    border: 1px solid #b3e0f2;
+.chat-messages{
+flex-grow:1;
+overflow-y:auto;
+padding:1rem;
+background-color:#f8f9fa;
+border-radius:8px;
+margin-bottom:1rem;
 }
 
-.read-button {
-    background-color: #007bff;
-    color: white;
-    border: none;
-    cursor: pointer;
-    transition: background-color 0.2s;
+.message{
+margin-bottom:1rem;
+padding:0.8rem1.2rem;
+border-radius:1rem;
+max-width:70%;
+box-shadow:02px4pxrgba(0,0,0,0.1);
 }
 
-/* Notification Styles */
-#notifications {
-    padding: 0 20px;
-    max-width: 800px;
-    margin: 0 auto;
+.message.sent{
+background-color:var(--primary-color);
+color:white;
+margin-left:auto;
 }
 
-#notifications > div {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    padding: 15px 20px;
-    margin: 10px 0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+.message.received{
+background-color:#e9ecef;
+margin-right:auto;
 }
 
-#notifications > div p {
-    margin: 0;
-    flex-grow: 1;
-    margin-right: 15px;
+/*UserLists*/
+.user-list{
+background:white;
+border-radius:12px;
+box-shadow:var(--card-shadow);
+padding:1rem;
+height:calc(100vh-200px);
+overflow-y:auto;
 }
 
-#notifications .read-button {
-    margin-left: 15px;
-    padding: 5px 15px;
-    font-size: 0.9em;
-    white-space: nowrap;
+.user-item{
+padding:0.8rem;
+border-bottom:1pxsolid#dee2e6;
+cursor:pointer;
+transition:var(--transition);
+}
+
+.user-item:hover{
+background-color:#f8f9fa;
+}
+
+.user-item.active{
+background-color:#e9ecef;
+font-weight:500;
+}
+
+/*Notifications*/
+.notification{
+background:white;
+border-radius:12px;
+box-shadow:var(--card-shadow);
+padding:1rem;
+margin:0.5rem0;
+display:flex;
+align-items:center;
+justify-content:space-between;
+transition:var(--transition);
+}
+
+.notification:hover{
+transform:translateX(5px);
+}
+
+/*VideoScanner*/
+.video-container{
+background:white;
+border-radius:12px;
+box-shadow:var(--card-shadow);
+padding:1rem;
+margin:1rem0;
+}
+
+video#qr-video{
+width:100%;
+border-radius:8px;
+box-shadow:02px4pxrgba(0,0,0,0.1);
+}
+
+/*ResponsiveDesign*/
+@media(max-width:768px){
+.navbar{
+flex-direction:column;
+gap:1rem;
+}
+
+.nav-buttons{
+width:100%;
+justify-content:center;
+}
+
+.chat-container{
+height:calc(100vh-250px);
+}
+
+.user-list{
+height:calc(100vh-250px);
+}
 }
