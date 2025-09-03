@@ -10,20 +10,35 @@ if (isset($_SESSION['type']) && $_SESSION['type']=="security"){
 <html>
     <head>
         <title>Scan Here</title>
-        <link rel="stylesheet" href="css.css">
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+        <style>
+            body {
+                background: linear-gradient(135deg, #e0f7ff 0%, #e0cfff 100%);
+            }
+            .card {
+                box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+                border-radius: 1rem;
+            }
+        </style>
     </head>
     <body>
-        <h1>Visitor Entry</h1>
-
-        <form id="scannerForm">
-            <video id="qr-video" autoplay style="width: 100%;"></video>
-            <input type="text" name="token" id="token" placeholder="QR Code" autocomplete="off">
-            <button type="submit">Enter</button>
-        </form>
-
-        <button onclick="window.location.href='logs.php'">View Logs</button>
-        <button onclick="window.location.href='chat_security.php'">Chat with Residents</button>
-        <button onclick="window.location.href='logout.php'">Logout</button>
+        <div class="container min-vh-100 d-flex justify-content-center align-items-center">
+            <div class="card p-4" style="max-width: 500px; width: 100%;">
+                <h1 class="mb-4 text-center">Visitor Entry</h1>
+                <form id="scannerForm">
+                    <div class="mb-3">
+                        <video id="qr-video" autoplay style="width: 100%; border-radius: 0.5rem;"></video>
+                    </div>
+                    <div class="mb-3">
+                        <input type="text" name="token" id="token" placeholder="QR Code" autocomplete="off" class="form-control">
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100 mb-2">Enter</button>
+                </form>
+                <button onclick="window.location.href='logs.php'" class="btn btn-outline-primary w-100 mb-2">View Logs</button>
+                <button onclick="window.location.href='chat_security.php'" class="btn btn-outline-primary w-100 mb-2">Chat with Residents</button>
+                <button onclick="window.location.href='logout.php'" class="btn btn-danger w-100">Logout</button>
+            </div>
+        </div>
 
         <script type="module">
             import QrScanner from './node_modules/qr-scanner/qr-scanner.min.js';

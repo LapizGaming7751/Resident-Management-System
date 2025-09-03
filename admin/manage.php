@@ -3,6 +3,7 @@
 <html>
     <head>
         <title>Admin Management</title>
+        <link rel="stylesheet" href="../css.css">
     </head>
     <body>
         <h1>Welcome, <?=$_SESSION['user']?></h1>

@@ -100,6 +100,21 @@ switch ($method) {
                                     echo json_encode(["message" => "Error fetching security list: " . $conn->error,"error"=>true]);
                                 }
                                 break;
+                            case "messaged_security_list":
+                                // Only show security guards who have messaged the resident before
+                                $sql = "SELECT DISTINCT s.id, s.user FROM messages m INNER JOIN security s ON m.sender_id = s.id WHERE m.receiver_id = '$id' AND m.receiver_type = 'resident' AND m.sender_type = 'security' ORDER BY m.id DESC";
+                                $result = $conn->query($sql);
+                                if ($result) {
+                                    $security = [];
+                                    while ($row = $result->fetch_assoc()) {
+                                        $security[] = $row;
+                                    }
+                                    echo json_encode($security);
+                                } else {
+                                    http_response_code(500);
+                                    echo json_encode(["message" => "Error fetching messaged security list: " . $conn->error,"error"=>true]);
+                                }
+                                break;
                             default:
                                 http_response_code(500);
                                 echo json_encode(["message" => "Fetch not recognized","error"=>true]);
@@ -297,7 +312,44 @@ switch ($method) {
         break;
 
     case "POST":
-        if($requestData['type']=="resident"){
+        if($requestData['type']=="register_resident"){
+            $user = $_GET['user'];
+            $pass = password_hash($_GET['pass'], PASSWORD_DEFAULT);
+            $room_code = $_GET['room_code'];
+
+            // Validate room code format
+            if (!preg_match('/^[0-9]{2}-[0-9]{2}-[A-Z][0-9]$/', $room_code)) {
+                echo json_encode(["message" => "Invalid room code format. Use format: 00-00-A0", "error" => true]);
+                exit;
+            }
+
+            // Check if username already exists
+            $check_sql = "SELECT * FROM residents WHERE user = '$user'";
+            $result = $conn->query($check_sql);
+            
+            if ($result->num_rows > 0) {
+                echo json_encode(["message" => "Username already exists", "error" => true]);
+                exit;
+            }
+
+            // Check if room code already exists
+            $check_room_sql = "SELECT * FROM residents WHERE room_code = '$room_code'";
+            $room_result = $conn->query($check_room_sql);
+            
+            if ($room_result->num_rows > 0) {
+                echo json_encode(["message" => "Room code already assigned", "error" => true]);
+                exit;
+            }
+            
+            $sql = "INSERT INTO residents (user, pass, room_code) VALUES ('$user', '$pass', '$room_code')";
+            
+            if ($conn->query($sql)) {
+                echo json_encode(["message" => "Registration successful", "error" => false]);
+            } else {
+                echo json_encode(["message" => "Registration failed: " . $conn->error, "error" => true]);
+            }
+        }
+        elseif($requestData['type']=="resident"){
             $created_by = $requestData['created_by'];
             $name = $requestData['name'];
             $plate = $requestData['plate'];

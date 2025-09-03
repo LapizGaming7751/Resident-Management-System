@@ -13,134 +13,36 @@ if (!isset($_SESSION['type']) || $_SESSION['type'] !== 'security') {
     <title>Security Chat</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        :root {
-            --primary-color: #007bff;
-            --secondary-color: #e0f7ff;
-            --text-color: #333;
-            --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            --transition: all 0.3s ease;
-        }
-
         body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--secondary-color);
-            color: var(--text-color);
-            line-height: 1.6;
+            background: linear-gradient(135deg, #e0f7ff 0%, #e0cfff 100%);
         }
-
-        .navbar {
-            background-color: white;
-            box-shadow: var(--card-shadow);
-            padding: 1rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-        }
-
-        .nav-buttons {
-            display: flex;
-            gap: 1rem;
-        }
-
-        .nav-button {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: var(--transition);
-            text-decoration: none;
-            font-weight: 500;
-        }
-
-        .nav-button:hover {
-            background-color: #0056b3;
-            transform: translateY(-2px);
-        }
-
-        .chat-container {
-            height: calc(100vh - 200px);
-            display: flex;
-            flex-direction: column;
-        }
-        .chat-messages {
-            flex-grow: 1;
-            overflow-y: auto;
-            padding: 1rem;
-            background-color: #f8f9fa;
-            border-radius: 8px;
-            margin-bottom: 1rem;
-        }
-        .message {
-            margin-bottom: 1rem;
-            padding: 0.8rem 1.2rem;
+        .card {
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
             border-radius: 1rem;
-            max-width: 70%;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-        .message.sent {
-            background-color: var(--primary-color);
-            color: white;
-            margin-left: auto;
-        }
-        .message.received {
-            background-color: #e9ecef;
-            margin-right: auto;
-        }
-        .user-list {
-            height: calc(100vh - 200px);
-            overflow-y: auto;
-            background: white;
-            border-radius: 12px;
-            box-shadow: var(--card-shadow);
-            padding: 1rem;
-        }
-        .user-item {
-            padding: 0.8rem;
-            border-bottom: 1px solid #dee2e6;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-        .user-item:hover {
-            background-color: #f8f9fa;
-        }
-        .user-item.active {
-            background-color: #e9ecef;
-            font-weight: 500;
         }
     </style>
 </head>
 <body>
-    <nav class="navbar">
-        <h2>Security Chat</h2>
-        <div class="nav-buttons">
-            <a href="scanner.php" class="nav-button">Back to Scanner</a>
-            <a href="logout.php" class="nav-button">Logout</a>
-        </div>
-    </nav>
-
-    <div class="container-fluid mt-3">
-        <div class="row">
-            <div class="col-md-3">
-                <div class="user-list-container">
-                    <div class="search-container mb-3">
-                        <input type="text" class="form-control" id="searchResident" placeholder="Search residents...">
-                    </div>
-                    <div class="user-list" id="residentList"></div>
-                </div>
+    <div class="container min-vh-100 d-flex justify-content-center align-items-center">
+        <div class="card p-4 w-100" style="max-width: 900px;">
+            <div class="d-flex justify-content-between mb-4">
+                <a href="scanner.php" class="btn btn-outline-primary">Back to Scanner</a>
+                <a href="logout.php" class="btn btn-danger">Logout</a>
             </div>
-            <div class="col-md-9">
-                <div class="chat-container">
-                    <div class="chat-messages" id="chatMessages"></div>
-                    <div class="input-group mt-3">
-                        <input type="text" class="form-control" id="messageInput" placeholder="Type your message...">
-                        <button class="btn btn-primary" id="sendButton">Send</button>
+            <div class="row">
+                <div class="col-md-4 mb-3 mb-md-0">
+                    <div class="card p-3">
+                        <input type="text" class="form-control mb-3" id="searchResident" placeholder="Search residents...">
+                        <div class="user-list" id="residentList"></div>
+                    </div>
+                </div>
+                <div class="col-md-8">
+                    <div class="card p-3">
+                        <div class="chat-messages mb-3" id="chatMessages" style="height:350px; overflow-y:auto; background:#f7faff; border-radius:0.5rem;"></div>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="messageInput" placeholder="Type your message...">
+                            <button class="btn btn-primary" id="sendButton">Send</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -188,7 +90,6 @@ if (!isset($_SESSION['type']) || $_SESSION['type'] !== 'security') {
         // Load messages for selected resident
         function loadMessages() {
             if (!currentResidentId) return;
-            
             fetch(`api.php?type=security&fetch=messages&resident_id=${currentResidentId}`)
                 .then(response => response.json())
                 .then(messages => {
@@ -197,7 +98,13 @@ if (!isset($_SESSION['type']) || $_SESSION['type'] !== 'security') {
                     messages.forEach(message => {
                         const div = document.createElement('div');
                         div.className = `message ${message.sender_type === 'security' ? 'sent' : 'received'}`;
-                        div.textContent = message.message;
+                        let senderLabel = '';
+                        if (message.sender_type === 'security') {
+                            senderLabel = '<span class="fw-bold text-primary">You:</span> ';
+                        } else {
+                            senderLabel = '<span class="fw-bold text-secondary">Resident:</span> ';
+                        }
+                        div.innerHTML = senderLabel + message.message;
                         chatMessages.appendChild(div);
                     });
                     chatMessages.scrollTop = chatMessages.scrollHeight;
