@@ -4,30 +4,30 @@
     <head>
         <title>Manage Visitors</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-        <style>
-            body {
-                background: linear-gradient(135deg, #e0f7ff 0%, #e0cfff 100%);
-            }
-            .card {
-                box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-                border-radius: 1rem;
-            }
-        </style>
+    <link rel="stylesheet" href="../css.css">
     </head>
     <body>
-        <div class="container min-vh-100 d-flex justify-content-center align-items-center">
-            <div class="card p-4" style="max-width: 700px; width: 100%;">
-                <h1 class="mb-4 text-center">Welcome, <?=$_SESSION['user']?></h1>
-
-                <div class="d-flex flex-wrap gap-2 mb-4 justify-content-center">
-                    <button onclick="window.location.href='generateQR.php';" class="btn btn-primary">Generate Invite</button>
-                    <button onclick="window.location.href='chat_resident.php';" class="btn btn-outline-primary">Chat with Security</button>
-                    <button onclick="window.location.href='logout.php';" class="btn btn-danger">Logout</button>
+        <div class="d-flex min-vh-100" style="background: none;">
+            <!-- Sidebar -->
+            <div class="d-flex flex-column bg-white p-3" style="min-width:200px; height:100vh; border-radius:0; box-shadow:0 4px 16px rgba(0,0,0,0.08); justify-content:space-between; position:sticky; top:0; left:0;">
+                <div>
+                    <h4 class="mb-4 text-center">Welcome,<br><?=$_SESSION['user']?></h4>
+                    <hr class="my-3">
+                    <button onclick="window.location.href='manage.php';" class="btn btn-primary w-100 mb-2" disabled>Manage QR</button>
+                    <button onclick="window.location.href='generateQR.php';" class="btn btn-outline-primary w-100 mb-2">Create QR</button>
+                    <button onclick="window.location.href='chat_resident.php';" class="btn btn-outline-primary w-100 mb-2">Security Chat</button>
                 </div>
-                <h2 class="mt-3">Notifications</h2>
-                <div id="notifications" class="mb-4"></div>
-                <h2>Manage Invites</h2>
-                <div id="qr"></div>
+                <button onclick="window.location.href='logout.php';" class="btn btn-danger w-100 mt-2">Logout</button>
+            </div>
+            <!-- Main Card -->
+            <div class="container d-flex justify-content-center align-items-center flex-grow-1">
+                <div class="card p-4" style="max-width: 700px; width: 100%;">
+                    <h2 class="mt-3">Notifications</h2>
+                    <div id="notifications" class="mb-4"></div>
+                    <hr class="my-3">
+                    <h2>Manage Invites</h2>
+                    <div id="qr"></div>
+                </div>
             </div>
         </div>
 

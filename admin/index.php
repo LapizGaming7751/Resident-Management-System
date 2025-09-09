@@ -1,28 +1,12 @@
 
-<html>
-    <head>
-        <title>Admin Login</title>
-    </head>
-    <body>
-        <div class="cd-1">
-        <h1>Login Admin</h1>
-            <form id="loginForm">
-                <label for="user">Username: </label>
+    <link rel="stylesheet" href="../css.css">
                 <input type="text" name="user" id="user"/><br/>
                 <label for="pass">Password: </label>
                 <input type="password" name="pass" id="pass"/><br/>
                 <button type="submit">Login</button>
             </form>
         </div>
-    </body>
-
-    <script>
-        const API_URL = 'http://localhost/Finals_CheckInSystem%20ai/api.php';
-
-        document.getElementById("loginForm").addEventListener("submit", e =>{
-            e.preventDefault();
-
-            const user = document.getElementById('user').value;
+    <link rel="stylesheet" href="../css.css">
             const pass = document.getElementById('pass').value;
                 const url = `${API_URL}?type=admin&user=${user}&pass=${pass}`;
 

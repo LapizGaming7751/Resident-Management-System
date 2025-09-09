@@ -12,36 +12,38 @@ if (!isset($_SESSION['type']) || $_SESSION['type'] !== 'resident') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Resident Chat</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body {
-            background: linear-gradient(135deg, #e0f7ff 0%, #e0cfff 100%);
-        }
-        .card {
-            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-            border-radius: 1rem;
-        }
-    </style>
+    <link rel="stylesheet" href="../css.css">
 </head>
 <body>
-    <div class="container min-vh-100 d-flex justify-content-center align-items-center">
-        <div class="card p-4 w-100" style="max-width: 900px;">
-            <div class="d-flex justify-content-between mb-4">
-                <a href="manage.php" class="btn btn-outline-primary">Back to Manage</a>
-                <a href="logout.php" class="btn btn-danger">Logout</a>
+    <div class="d-flex min-vh-100" style="background: none;">
+        <!-- Sidebar -->
+        <div class="d-flex flex-column bg-white p-3" style="min-width:200px; height:100vh; border-radius:0; box-shadow:0 4px 16px rgba(0,0,0,0.08); justify-content:space-between; position:sticky; top:0; left:0;">
+            <div>
+                <h4 class="mb-4 text-center">Welcome,<br><?=$_SESSION['user']?></h4>
+                <hr class="my-3">
+                <button onclick="window.location.href='manage.php';" class="btn btn-outline-primary w-100 mb-2">Manage QR</button>
+                <button onclick="window.location.href='generateQR.php';" class="btn btn-outline-primary w-100 mb-2">Create QR</button>
+                <button class="btn btn-primary w-100 mb-2" disabled>Security Chat</button>
             </div>
-            <div class="row">
-                <div class="col-md-4 mb-3 mb-md-0">
-                    <div class="card p-3">
-                        <input type="text" class="form-control mb-3" id="searchSecurity" placeholder="Search security guards...">
-                        <div class="user-list" id="securityList"></div>
+            <button onclick="window.location.href='logout.php';" class="btn btn-danger w-100 mt-2">Logout</button>
+        </div>
+        <!-- Main Card -->
+        <div class="container d-flex justify-content-center align-items-center flex-grow-1">
+            <div class="card p-4 w-100" style="max-width: 900px;">
+                <div class="row">
+                    <div class="col-md-4 mb-3 mb-md-0">
+                        <div class="card p-3">
+                            <input type="text" class="form-control mb-3" id="searchSecurity" placeholder="Search security guards...">
+                            <div class="user-list" id="securityList"></div>
+                        </div>
                     </div>
-                </div>
-                <div class="col-md-8">
-                    <div class="card p-3">
-                        <div class="chat-messages mb-3" id="chatMessages" style="height:350px; overflow-y:auto; background:#f7faff; border-radius:0.5rem;"></div>
-                        <div class="input-group">
-                            <input type="text" class="form-control" id="messageInput" placeholder="Type your message...">
-                            <button class="btn btn-primary" id="sendButton">Send</button>
+                    <div class="col-md-8">
+                        <div class="card p-3">
+                            <div class="chat-messages mb-3" id="chatMessages" style="height:500px; overflow-y:auto; background: linear-gradient(135deg, #5ecbff 0%, #b47aff 100%);"></div>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="messageInput" placeholder="Type your message...">
+                                <button class="btn btn-primary" id="sendButton">Send</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -124,11 +126,11 @@ if (!isset($_SESSION['type']) || $_SESSION['type'] !== 'resident') {
                         div.className = `message ${message.sender_type === 'resident' ? 'sent' : 'received'}`;
                         let senderLabel = '';
                         if (message.sender_type === 'resident') {
-                            senderLabel = '<span class="fw-bold text-primary">You:</span> ';
+                            senderLabel = '<span style="font-size:1.1rem;font-weight:700;color:#007bff;background:#e0f7ff;padding:2px 8px;border-radius:6px;">You</span> ';
                         } else {
-                            senderLabel = '<span class="fw-bold text-secondary">Security:</span> ';
+                            senderLabel = '<span style="font-size:1.1rem;font-weight:700;color:#b47aff;background:#f3eaff;padding:2px 8px;border-radius:6px;">Security</span> ';
                         }
-                        div.innerHTML = senderLabel + message.message;
+                        div.innerHTML = senderLabel + '<span style="font-size:1.15rem;">' + message.message + '</span>';
                         chatMessages.appendChild(div);
                     });
                     chatMessages.scrollTop = chatMessages.scrollHeight;
