@@ -35,11 +35,10 @@
             }
 
             const type = "register_resident";
-            const url = `${API_URL}?type=${type}&user=${user}&pass=${pass}&room_code=${room_code}`;
-
-            fetch(url, {
+            fetch(API_URL, {
                 method: 'POST',
-                headers: {'Content-type':'application/json'}
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type, user, pass, room_code })
             })
             .then(response => {
                 if (!response.ok) {

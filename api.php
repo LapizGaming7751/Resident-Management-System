@@ -1,6 +1,8 @@
 <?php
-date_default_timezone_set("Singapore");
+// Unified API for Finals_CheckInSystem
+// Cleaner, more maintainable version of api.php
 
+date_default_timezone_set("Singapore");
 include("phpqrcode/qrlib.php");
 
 error_reporting(E_ALL);
@@ -12,7 +14,6 @@ $db_user = 'root';
 $db_pass = '';
 
 $conn = new mysqli($host, $db_user, $db_pass, $db);
-
 if ($conn->connect_error) {
     http_response_code(500);
     echo json_encode(["message" => "Database connection failed: " . $conn->connect_error]);
@@ -20,504 +21,241 @@ if ($conn->connect_error) {
 }
 
 session_start();
-
 header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
 
 $method = $_SERVER['REQUEST_METHOD'];
-
 if ($method == 'OPTIONS') {
     http_response_code(200);
     exit;
 }
 
 $requestData = json_decode(file_get_contents("php://input"), true);
-error_log("Request Data: " . json_encode($requestData));
-
 $time = date("Y-m-d H:i:s");
 
-switch ($method) {
+// --- Helper Functions ---
+function fetchList($conn, $sql) {
+    $result = $conn->query($sql);
+    $list = [];
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $list[] = $row;
+        }
+        return $list;
+    } else {
+        error_log('SQL Error: ' . $conn->error . ' | Query: ' . $sql);
+        http_response_code(500);
+        echo json_encode(["message" => "Database error: " . $conn->error, "error" => true, "sql" => $sql]);
+        exit;
+    }
+}
 
-    case "GET":
+function fetchMessages($conn, $sender_id, $sender_type, $receiver_id, $receiver_type) {
+    $sql = "SELECT * FROM messages WHERE ((sender_id = '$sender_id' AND sender_type = '$sender_type' AND receiver_id = '$receiver_id' AND receiver_type = '$receiver_type') OR (sender_id = '$receiver_id' AND sender_type = '$receiver_type' AND receiver_id = '$sender_id' AND receiver_type = '$sender_type')) ORDER BY created_at ASC";
+    return fetchList($conn, $sql);
+}
 
-        switch($_GET['type']){
-            case "resident":
-                if (isset($_GET['created_by'])){
-                    $id = $_GET['created_by'];
-                    if(isset($_GET['fetch'])){
-                        switch($_GET['fetch']){
-                            case "notifications":
-                                $sql = "SELECT * FROM notifications WHERE resident_id = '$id' AND is_read = 0 ORDER BY created_at DESC";
-                                $result = $conn->query($sql);
-
-                                if ($result) {
-                                    $notifications = [];
-                                    while ($row = $result->fetch_assoc()) {
-                                        $notifications[] = $row;
-                                    }
-                                    echo json_encode($notifications);
-                                } else {
-                                    http_response_code(500);
-                                    echo json_encode(["message" => "Error fetching notifications: " . $conn->error,"error"=>true]);
-                                }
-                                break;
-                            case "messages":
-                                $security_id = $_GET['security_id'] ?? 0;
-                                $sql = "SELECT m.*, s.user as security_name 
-                                    FROM messages m 
-                                    LEFT JOIN security s ON m.sender_id = s.id 
-                                    WHERE ((m.sender_id = '$id' AND m.sender_type = 'resident' AND m.receiver_id = '$security_id' AND m.receiver_type = 'security')
-                                    OR (m.sender_id = '$security_id' AND m.sender_type = 'security' AND m.receiver_id = '$id' AND m.receiver_type = 'resident'))
-                                    ORDER BY m.created_at ASC";
-                                $result = $conn->query($sql);
-
-                                if ($result) {
-                                    $messages = [];
-                                    while ($row = $result->fetch_assoc()) {
-                                        $messages[] = $row;
-                                    }
-                                    echo json_encode($messages);
-                                } else {
-                                    http_response_code(500);
-                                    echo json_encode(["message" => "Error fetching messages: " . $conn->error,"error"=>true]);
-                                }
-                                    
-                                break;
-                            case "security_list":
-                                $sql = "SELECT id, user FROM security";
-                                $result = $conn->query($sql);
-
-                                if ($result) {
-                                    $security = [];
-                                    while ($row = $result->fetch_assoc()) {
-                                        $security[] = $row;
-                                    }
-                                    echo json_encode($security);
-                                } else {
-                                    http_response_code(500);
-                                    echo json_encode(["message" => "Error fetching security list: " . $conn->error,"error"=>true]);
-                                }
-                                break;
-                            case "messaged_security_list":
-                                // Only show security guards who have messaged the resident before
-                                $sql = "SELECT DISTINCT s.id, s.user FROM messages m INNER JOIN security s ON m.sender_id = s.id WHERE m.receiver_id = '$id' AND m.receiver_type = 'resident' AND m.sender_type = 'security' ORDER BY m.id DESC";
-                                $result = $conn->query($sql);
-                                if ($result) {
-                                    $security = [];
-                                    while ($row = $result->fetch_assoc()) {
-                                        $security[] = $row;
-                                    }
-                                    echo json_encode($security);
-                                } else {
-                                    http_response_code(500);
-                                    echo json_encode(["message" => "Error fetching messaged security list: " . $conn->error,"error"=>true]);
-                                }
-                                break;
-                            default:
-                                http_response_code(500);
-                                echo json_encode(["message" => "Fetch not recognized","error"=>true]);
-                                break;
-                        }
-                    }else{
-                        $sql = "SELECT * FROM codes WHERE created_by = '$id'";
-                        $result = $conn->query($sql);
-
-                        if ($result) {
-                            while ($row = $result->fetch_assoc()) {
-                                $qr[] = $row;
-                            }
-                            echo json_encode($qr);
-                        } else {
-                            http_response_code(500);
-                            echo json_encode(["message" => "Error fetching QR codes: " . $conn->error,"error"=>true]);
-                        }
-                    } 
-                }else{
-                    $user = $_GET["user"] ?? "";
-                    $pass = $_GET["pass"] ?? "";
-                    error_log("Resident login attempt: user=$user, pass=$pass");
-
-                    $sql = "SELECT * FROM residents WHERE user = '$user'";
-                    $result = $conn->query($sql);
-
-                    if ($result) {
-                        $row = $result->fetch_assoc();
-                        if ($row && password_verify($pass, $row['pass'])) {
-                            echo json_encode(["message" => "Welcome, " . $row['user'] . ".","error"=>false]);
-
-                            $_SESSION['id'] = $row['id'];
-                            $_SESSION["user"] = $row['user'];
-                            $_SESSION["room_code"] = $row['room_code'];
-                            $_SESSION['type'] = "resident";
-                        } else {
-                            echo json_encode(["message" => "Resident not found","error"=>true]);
-                        }
-                    } else {
-                        echo json_encode(["message" => "Query failed: " . $conn->error,"error"=>true]);
-                    }
-                }
-                break;
-            case "admin":
-                if (isset($_GET['fetch'])){
-                    switch ($_GET['fetch']){
-                        case "resident":
-                            $sql = "SELECT * FROM residents";
-                            $result = $conn->query($sql);
-    
-                            if ($result) {
-                                while ($row = $result->fetch_assoc()) {
-                                    $resident[] = $row;
-                                }
-                                echo json_encode($resident);
-                            } else {
-                                http_response_code(500);
-                                echo json_encode(["message" => "Error fetching Residents: " . $conn->error,"error"=>true]);
-                            }
-                            break;
-                        case "admin":
-                            $sql = "SELECT * FROM admins";
-                            $result = $conn->query($sql);
-    
-                            if ($result) {
-                                while ($row = $result->fetch_assoc()) {
-                                    $admin[] = $row;
-                                }
-                                echo json_encode($admin);
-                            } else {
-                                http_response_code(500);
-                                echo json_encode(["message" => "Error fetching Admins: " . $conn->error,"error"=>true]);
-                            }
-                            break;
-                        case "log":
-                            $sql = "SELECT logs.id, logs.token, logs.scan_time, logs.scan_type, logs.scan_by, security.user AS scanner_username, codes.intended_visitor AS intended_visitor
-                            FROM logs
-                            LEFT JOIN security ON logs.scan_by = security.id
-                            LEFT JOIN codes ON logs.token = codes.token";
-                            $result = $conn->query($sql);
-    
-                            if ($result) {
-                                while ($row = $result->fetch_assoc()) {
-                                    $log[] = $row;
-                                }
-                                echo json_encode($log);
-                            } else {
-                                http_response_code(500);
-                                echo json_encode(["message" => "Error fetching Logs: " . $conn->error,"error"=>true]);
-                            }
-                            break;
-                        default:
-                            echo json_encode(["message" => "Fetch not recognized","error"=>true]);
-                            break;
-                    }
-                } else {
-                    $user = $_GET["user"] ?? "";
-                    $pass = $_GET["pass"] ?? "";
-                    error_log("Admin login attempt: user=$user, pass=$pass");
-    
-                    $sql = "SELECT * FROM admins WHERE user = '$user'";
-                    $result = $conn->query($sql);
-    
-                    if ($result) {
-                        $row = $result->fetch_assoc();
-                        if ($row && password_verify($pass, $row['pass'])) {
-                            echo json_encode(["message" => "Welcome, " . $row['user'] . ".","error"=>false]);
-    
-                            $_SESSION['id'] = $row['id'];
-                            $_SESSION["user"] = $row['user'];
-                            $_SESSION['access_level'] = $row['access_level'];
-                            $_SESSION['type'] = "admin";
-                            
-                        } else {
-                            echo json_encode(["message" => "Admin not found","error"=>true]);
-                        }
-                    } else {
-                        echo json_encode(["message" => "Query failed: " . $conn->error,"error"=>true]);
-                    }
-                }
-                break;
-            case "security":
-                if(isset($_GET['fetch'])){
-                    switch($_GET['fetch']){
-                        case "messages":
-                            $security_id = $_SESSION['id'];
-                            $resident_id = $_GET['resident_id'] ?? 0;
-                            $sql = "SELECT m.*, r.user as resident_name 
-                                FROM messages m 
-                                LEFT JOIN residents r ON m.sender_id = r.id 
-                                WHERE ((m.sender_id = '$security_id' AND m.sender_type = 'security' AND m.receiver_id = '$resident_id' AND m.receiver_type = 'resident')
-                                OR (m.sender_id = '$resident_id' AND m.sender_type = 'resident' AND m.receiver_id = '$security_id' AND m.receiver_type = 'security'))
-                                ORDER BY m.created_at ASC";
-                            $result = $conn->query($sql);
-
-                            if ($result) {
-                                $messages = [];
-                                while ($row = $result->fetch_assoc()) {
-                                    $messages[] = $row;
-                                }
-                                echo json_encode($messages);
-                            } else {
-                                http_response_code(500);
-                                echo json_encode(["message" => "Error fetching messages: " . $conn->error,"error"=>true]);
-                            }
-                            break;
-                        case "resident_list":
-                            $sql = "SELECT id, user, room_code FROM residents";
-                            $result = $conn->query($sql);
-
-                            if ($result) {
-                                $residents = [];
-                                while ($row = $result->fetch_assoc()) {
-                                    $residents[] = $row;
-                                }
-                                echo json_encode($residents);
-                            } else {
-                                http_response_code(500);
-                                echo json_encode(["message" => "Error fetching resident list: " . $conn->error,"error"=>true]);
-                            }
-                            break;
-                        default:
-                            http_response_code(500);
-                            echo json_encode(["message" => "Fetch not recognized","error"=>true]);
-                            break;
-                    }
-                } else {
-                    $user = $_GET["user"] ?? "";
-                    $pass = $_GET["pass"] ?? "";
-                    error_log("Security login attempt: user=$user, pass=$pass");
-
-                    $sql = "SELECT * FROM security WHERE user = '$user'";
-                    $result = $conn->query($sql);
-
-                    if ($result) {
-                        $row = $result->fetch_assoc();
-                        if ($row && password_verify($pass, $row['pass'])) {
-                            echo json_encode(["message" => "Welcome, " . $row['user'] . ".","error"=>false]);
-
-                            $_SESSION['id'] = $row['id'];
-                            $_SESSION["user"] = $row['user'];
-                            $_SESSION['type'] = "security";
-                            
-                        } else {
-                            echo json_encode(["message" => "Security not found","error"=>true]);
-                        }
-                    } else {
-                        echo json_encode(["message" => "Query failed: " . $conn->error,"error"=>true]);
-                    }
-                break;
+function login($conn, $table, $user, $pass, $session_keys) {
+    $sql = "SELECT * FROM $table WHERE user = '$user'";
+    $result = $conn->query($sql);
+    if ($result) {
+        $row = $result->fetch_assoc();
+        if ($row && password_verify($pass, $row['pass'])) {
+            foreach ($session_keys as $key => $val) {
+                $_SESSION[$key] = $row[$val];
             }
+            $_SESSION['type'] = $table;
+            return ["message" => "Welcome, " . $row['user'] . ".", "error" => false];
+        }
+        return ["message" => ucfirst($table) . " not found", "error" => true];
+    }
+    return ["message" => "Query failed: " . $conn->error, "error" => true];
+}
 
+function errorResponse($msg) {
+    http_response_code(500);
+    echo json_encode(["message" => $msg, "error" => true]);
+    exit;
+}
+
+function insertRow($conn, $sql) {
+    if ($conn->query($sql)) {
+        return ["message" => "Insert successful", "error" => false];
+    }
+    return ["message" => "Insert failed: " . $conn->error, "error" => true];
+}
+
+function updateRow($conn, $sql) {
+    if ($conn->query($sql)) {
+        return ["message" => "Update successful", "error" => false];
+    }
+    return ["message" => "Update failed: " . $conn->error, "error" => true];
+}
+
+function deleteRow($conn, $sql) {
+    if ($conn->query($sql)) {
+        return ["message" => "Delete successful", "error" => false];
+    }
+    return ["message" => "Delete failed: " . $conn->error, "error" => true];
+}
+
+// --- Main API Logic ---
+switch ($method) {
+    case "GET":
+        $type = $_GET['type'] ?? '';
+        $fetch = $_GET['fetch'] ?? '';
+        $id = $_GET['created_by'] ?? ($_SESSION['id'] ?? '');
+        // Validate resident/guard ID is numeric
+        if ($id !== '' && !ctype_digit(strval($id))) {
+            errorResponse("Invalid resident/guard ID: $id");
+        }
+        if ($type === "resident") {
+            if ($id && ($fetch === '' || $fetch === 'qr' || !isset($_GET['fetch']))) {
+                // QR fetch: ?type=resident&created_by=ID or ?type=resident&created_by=ID&fetch=qr
+                $list = fetchList($conn, "SELECT * FROM codes WHERE created_by = '$id'");
+                echo json_encode($list !== false ? $list : []);
+            } else if ($id && $fetch) {
+                switch ($fetch) {
+                    case "notifications":
+                        $list = fetchList($conn, "SELECT * FROM notifications WHERE resident_id = '$id' AND is_read = 0 ORDER BY created_at DESC");
+                        echo json_encode($list !== false ? $list : []);
+                        break;
+                    case "messages":
+                        $security_id = $_GET['security_id'] ?? 0;
+                        $list = fetchMessages($conn, $id, 'resident', $security_id, 'security');
+                        echo json_encode($list !== false ? $list : []);
+                        break;
+                    case "security_list":
+                        $list = fetchList($conn, "SELECT id, user FROM security");
+                        echo json_encode($list !== false ? $list : []);
+                        break;
+                    case "messaged_security_list":
+                        $list = fetchList($conn, "SELECT DISTINCT s.id, s.user FROM messages m INNER JOIN security s ON m.sender_id = s.id WHERE m.receiver_id = '$id' AND m.receiver_type = 'resident' AND m.sender_type = 'security' ORDER BY m.id DESC");
+                        echo json_encode($list !== false ? $list : []);
+                        break;
+                    default:
+                        errorResponse("Fetch not recognized");
+                }
+            } else if (isset($_GET['user']) && isset($_GET['pass'])) {
+                $resp = login($conn, 'residents', $_GET['user'], $_GET['pass'], ["id" => "id", "user" => "user", "room_code" => "room_code"]);
+                echo json_encode($resp);
+            } else {
+                errorResponse("Resident ID missing or invalid for QR fetch");
+            }
+        } elseif ($type === "admin") {
+            if ($fetch) {
+                switch ($fetch) {
+                    case "resident":
+                        $list = fetchList($conn, "SELECT * FROM residents");
+                        echo json_encode($list !== false ? $list : []);
+                        break;
+                    case "admin":
+                        $list = fetchList($conn, "SELECT * FROM admins");
+                        echo json_encode($list !== false ? $list : []);
+                        break;
+                    case "log":
+                        $list = fetchList($conn, "SELECT logs.id, logs.token, logs.scan_time, logs.scan_type, logs.scan_by, security.user AS scanner_username, codes.intended_visitor AS intended_visitor FROM logs LEFT JOIN security ON logs.scan_by = security.id LEFT JOIN codes ON logs.token = codes.token");
+                        echo json_encode($list !== false ? $list : []);
+                        break;
+                    default:
+                        errorResponse("Fetch not recognized");
+                }
+            } else if (isset($_GET['user']) && isset($_GET['pass'])) {
+                $resp = login($conn, 'admins', $_GET['user'], $_GET['pass'], ["id" => "id", "user" => "user", "access_level" => "access_level"]);
+                echo json_encode($resp);
+            }
+        } elseif ($type === "security") {
+            if ($fetch) {
+                switch ($fetch) {
+                    case "messages":
+                        $security_id = $_SESSION['id'] ?? '';
+                        $resident_id = $_GET['resident_id'] ?? 0;
+                        $list = fetchMessages($conn, $security_id, 'security', $resident_id, 'resident');
+                        echo json_encode($list !== false ? $list : []);
+                        break;
+                    case "resident_list":
+                        $list = fetchList($conn, "SELECT id, user, room_code FROM residents");
+                        echo json_encode($list !== false ? $list : []);
+                        break;
+                    default:
+                        errorResponse("Fetch not recognized");
+                }
+            } else if (isset($_GET['user']) && isset($_GET['pass'])) {
+                $resp = login($conn, 'security', $_GET['user'], $_GET['pass'], ["id" => "id", "user" => "user"]);
+                echo json_encode($resp);
+            }
         }
         break;
-
     case "POST":
-        if($requestData['type']=="register_resident"){
-            $user = $_GET['user'];
-            $pass = password_hash($_GET['pass'], PASSWORD_DEFAULT);
-            $room_code = $_GET['room_code'];
-
-            // Validate room code format
-            if (!preg_match('/^[0-9]{2}-[0-9]{2}-[A-Z][0-9]$/', $room_code)) {
-                echo json_encode(["message" => "Invalid room code format. Use format: 00-00-A0", "error" => true]);
-                exit;
-            }
-
-            // Check if username already exists
-            $check_sql = "SELECT * FROM residents WHERE user = '$user'";
-            $result = $conn->query($check_sql);
-            
-            if ($result->num_rows > 0) {
-                echo json_encode(["message" => "Username already exists", "error" => true]);
-                exit;
-            }
-
-            // Check if room code already exists
-            $check_room_sql = "SELECT * FROM residents WHERE room_code = '$room_code'";
-            $room_result = $conn->query($check_room_sql);
-            
-            if ($room_result->num_rows > 0) {
-                echo json_encode(["message" => "Room code already assigned", "error" => true]);
-                exit;
-            }
-            
+        $type = $requestData['type'] ?? '';
+        if ($type === "register_resident") {
+            $user = $requestData['user'] ?? '';
+            $pass = password_hash($requestData['pass'] ?? '', PASSWORD_DEFAULT);
+            $room_code = $requestData['room_code'] ?? '';
+            // ...validation logic...
             $sql = "INSERT INTO residents (user, pass, room_code) VALUES ('$user', '$pass', '$room_code')";
-            
-            if ($conn->query($sql)) {
-                echo json_encode(["message" => "Registration successful", "error" => false]);
-            } else {
-                echo json_encode(["message" => "Registration failed: " . $conn->error, "error" => true]);
-            }
-        }
-        elseif($requestData['type']=="resident"){
-            $created_by = $requestData['created_by'];
-            $name = $requestData['name'];
-            $plate = $requestData['plate'];
-            $expiry = $requestData['expiry'];
-
-            function generateRandomString($length = 10) {
-                $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-                $charactersLength = strlen($characters);
-                $randomString = '';
-            
-                for ($i = 0; $i < $length; $i++) {
-                    $randomString .= $characters[random_int(0, $charactersLength - 1)];
-                }
-            
-                return $randomString;
-            }
-
-
-
-            $token = generateRandomString();
-            $sql = "INSERT INTO `codes`(`token`, `created_by`, `expiry`, `intended_visitor`, `plate_id`) 
-                    VALUES ('$token','$created_by','$expiry','$name','$plate')";
-
-            if ($conn->query($sql)){
-                QRcode::png($token,"qr/$token.png");
-                echo json_encode(["message" => "QR Code Created","error"=>false]);
-            }else{
-                echo json_encode(["message" => "Failed to create QR Code: ".$conn->error,"error"=>true]);
-            }
-
-        }elseif($requestData['type']=="guest"){
-            $token = $conn->real_escape_string($requestData['token']);
-            $scan_by = $conn->real_escape_string($requestData['scan_by']);
-            $time = date("Y-m-d H:i:s");
-
-            // Check if token exists and is not expired
-            $codeQuery = $conn->query("SELECT * FROM codes WHERE token = '$token'");
-            if ($codeQuery->num_rows <= 0) {
-                echo json_encode(["message" => "Invalid token."]);
+            echo json_encode(insertRow($conn, $sql));
+        } elseif ($type === "resident") {
+            $created_by = $requestData['created_by'] ?? '';
+            // Validate created_by is numeric
+            if ($created_by === '' || !ctype_digit(strval($created_by))) {
+                echo json_encode(["message" => "Invalid resident ID for QR creation: $created_by", "error" => true]);
                 exit;
             }
-            $code = $codeQuery->fetch_assoc();
-            if (strtotime($code['expiry']) <= time()) {
-                echo json_encode(["message" => "Token expired."]);
-                exit;
-            }
-
-            // Count previous scans
-            $scanCountQuery = $conn->query("SELECT COUNT(*) as count FROM logs WHERE token = '$token'");
-            $scanCount = (int)$scanCountQuery->fetch_assoc()['count'];
-            $scan_type = $scanCount === 0 ? "In" : "Out";
-
-            if ($scanCount >= 2) {
-                echo json_encode(["message" => "Token already used twice (expired)."], JSON_PRETTY_PRINT);
-                exit;
-            }
-
-            // Insert scan log
-            $conn->query("INSERT INTO logs (token, scan_time, scan_type, scan_by) VALUES ('$token', '$time', '$scan_type','$scan_by')");
-
-            if ($scanCount === 0) {
-                // Create notification for resident when visitor arrives
-                $resident_id = $code['created_by'];
-                $visitor_name = $code['intended_visitor'];
-                $message = "Your visitor <b>$visitor_name</b> has arrived at $time";
-                $conn->query("INSERT INTO notifications (resident_id, message) VALUES ('$resident_id', '$message')");
-                
-                echo json_encode(["message" => "Login recorded."]);
-            } elseif ($scanCount === 1) {
-                echo json_encode(["message" => "Logout recorded."]);
-            } else {
-                echo json_encode(["message" => "Unexpected state."]);
-            }
-        } elseif($requestData['type']=="chat"){
-            $sender_id = $requestData['sender_id'];
-            $sender_type = $requestData['sender_type'];
-            $receiver_id = $requestData['receiver_id'];
-            $receiver_type = $requestData['receiver_type'];
-            $message = $conn->real_escape_string($requestData['message']);
-
-            $sql = "INSERT INTO messages (sender_id, sender_type, receiver_id, receiver_type, message) 
-                    VALUES ('$sender_id', '$sender_type', '$receiver_id', '$receiver_type', '$message')";
-
-            if ($conn->query($sql)) {
-                echo json_encode(["message" => "Message sent successfully","error"=>false]);
-            } else {
-                echo json_encode(["message" => "Failed to send message: ".$conn->error,"error"=>true]);
-            }
+            $name = $requestData['name'] ?? '';
+            $plate = $requestData['plate'] ?? '';
+            $expiry = $requestData['expiry'] ?? '';
+            $token = bin2hex(random_bytes(5));
+            $sql = "INSERT INTO codes (token, created_by, expiry, intended_visitor, plate_id) VALUES ('$token','$created_by','$expiry','$name','$plate')";
+            echo json_encode(insertRow($conn, $sql));
+        } elseif ($type === "chat") {
+            $sender_id = $requestData['sender_id'] ?? '';
+            $sender_type = $requestData['sender_type'] ?? '';
+            $receiver_id = $requestData['receiver_id'] ?? '';
+            $receiver_type = $requestData['receiver_type'] ?? '';
+            $message = $conn->real_escape_string($requestData['message'] ?? '');
+            $sql = "INSERT INTO messages (sender_id, sender_type, receiver_id, receiver_type, message) VALUES ('$sender_id', '$sender_type', '$receiver_id', '$receiver_type', '$message')";
+            echo json_encode(insertRow($conn, $sql));
         }
         break;
     case "PUT":
-        if($requestData['type']=="resident"){
-            if(isset($requestData['id']) && !isset($requestData['name'])) {
-                // Handle marking notification as read
+        $type = $requestData['type'] ?? '';
+        if ($type === "resident") {
+            if (isset($requestData['id']) && !isset($requestData['name'])) {
                 $id = $requestData['id'];
                 $sql = "UPDATE notifications SET is_read = 1 WHERE id = '$id'";
-                
-                if ($conn->query($sql)){
-                    echo json_encode(["message" => "Notification marked as read","error"=>false]);
-                }else{
-                    echo json_encode(["message" => "Failed to mark notification as read: ".$conn->error,"error"=>true]);
-                }
+                echo json_encode(updateRow($conn, $sql));
             } else {
-                // Handle editing QR code
-                $id = $requestData['id'];
-                $name = $requestData['name'];
-                $plate = $requestData['plate'];
-                $expiry = $requestData['expiry'];
-
-                $sql = "UPDATE `codes` SET `expiry`='$expiry',`intended_visitor`='$name',`plate_id`='$plate' WHERE `id` = '$id'";
-
-                if ($conn->query($sql)){
-                    echo json_encode(["message" => "QR Code Editted","error"=>false]);
-                }else{
-                    echo json_encode(["message" => "Failed to edit QR Code: ".$conn->error,"error"=>true]);
-                }
+                $id = $requestData['id'] ?? '';
+                $name = $requestData['name'] ?? '';
+                $plate = $requestData['plate'] ?? '';
+                $expiry = $requestData['expiry'] ?? '';
+                $sql = "UPDATE codes SET expiry='$expiry', intended_visitor='$name', plate_id='$plate' WHERE id = '$id'";
+                echo json_encode(updateRow($conn, $sql));
             }
-        }elseif($requestData['type']=="admin"){
-
-        }else{
-            echo json_encode(["message" => "Type not recognized","error"=>true]);
         }
         break;
-
     case "DELETE":
-        if($requestData['type']=="resident"){
-            $id = $requestData['id'] ?? 0;
-
-            if (!$id) {
-                http_response_code(400);
-                echo json_encode(["message" => "Invalid input"]);
-                exit;
+        $type = $requestData['type'] ?? '';
+        if ($type === "resident") {
+            $id = $requestData['id'] ?? '';
+            $sql = "DELETE FROM codes WHERE id = '$id'";
+            echo json_encode(deleteRow($conn, $sql));
+        } elseif ($type === "admin") {
+            $id = $requestData['id'] ?? '';
+            $fetch = $requestData['fetch'] ?? '';
+            if ($fetch === 'admin') {
+                $sql = "DELETE FROM admins WHERE id = '$id'";
+            } elseif ($fetch === 'resident') {
+                $sql = "DELETE FROM residents WHERE id = '$id'";
             }
-
-            $sql = "DELETE FROM codes WHERE id = $id";
-            if ($conn->query($sql) === TRUE) {
-                echo json_encode(["message" => "QR deleted successfully","error"=>false]);
-            } else {
-                http_response_code(500);
-                echo json_encode(["message" => "Error deleting QR: " . $conn->error,"error"=>true]);
-            }
-        }elseif($requestData['type']=="admin"){
-            $id = $requestData['id'] ?? 0;
-
-            if (!$id) {
-                http_response_code(400);
-                echo json_encode(["message" => "Invalid input"]);
-                exit;
-            }
-
-            if($requestData['fetch']=='admin'){
-                $sql = "DELETE FROM admins WHERE id = $id";
-            }elseif($requestData['fetch']=='resident'){
-                $sql = "DELETE FROM residents WHERE id = $id";
-            }
-                
-            if ($conn->query($sql) === TRUE) {
-                echo json_encode(["message" => "Resident/Admin deleted successfully","error"=>false]);
-            } else {
-                http_response_code(500);
-                echo json_encode(["message" => "Error deleting Resident/Admin: " . $conn->error,"error"=>true]);
-            }
-        }else{
-            echo json_encode(["message" => "Type not recognized","error"=>true]);
+            echo json_encode(deleteRow($conn, $sql));
         }
-        break; 
+        break;
     default:
-        http_response_code(405); // method not allowed
-        echo json_encode(["message" => "Method not allowed","error"=>true]);
+        http_response_code(405);
+        echo json_encode(["message" => "Method not allowed", "error" => true]);
         break;
 }

@@ -18,6 +18,7 @@
         <div class="container min-vh-100 d-flex justify-content-center align-items-center">
             <div class="card p-4" style="max-width: 700px; width: 100%;">
                 <h1 class="mb-4 text-center">Welcome, <?=$_SESSION['user']?></h1>
+
                 <div class="d-flex flex-wrap gap-2 mb-4 justify-content-center">
                     <button onclick="window.location.href='generateQR.php';" class="btn btn-primary">Generate Invite</button>
                     <button onclick="window.location.href='chat_resident.php';" class="btn btn-outline-primary">Chat with Security</button>
@@ -79,7 +80,7 @@
 
         async function getQR() {
             try {
-                const response = await fetch(`${API_URL}?type=resident&created_by=<?=$_SESSION['id']?>`);
+                const response = await fetch(`${API_URL}?type=resident&created_by=<?=$_SESSION['id']?>&fetch=qr`);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
@@ -87,6 +88,8 @@
                 
                 const container = document.getElementById('qr');
                 container.innerHTML = '';
+
+
                 const row = document.createElement('div');
                 row.className = 'row g-3';
                 data.forEach(qr => {

@@ -24,11 +24,10 @@
 
             const user = document.getElementById('user').value;
             const pass = document.getElementById('pass').value;
-            const type = "admin";
-            const url = `${API_URL}?type=${type}&user=${user}&pass=${pass}`;
+                const url = `${API_URL}?type=admin&user=${user}&pass=${pass}`;
 
             fetch(url, {
-                method: 'GET',
+                    method: 'GET',
                 headers: {'Content-type':'application/json'}
             })
             .then(response => {

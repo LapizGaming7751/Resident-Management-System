@@ -1,7 +1,7 @@
 <?php
 session_start();
 if (!isset($_SESSION['type']) || $_SESSION['type'] !== 'resident') {
-    header('Location: login.php');
+    header('Location: index.php');
     exit;
 }
 ?>
@@ -99,26 +99,6 @@ if (!isset($_SESSION['type']) || $_SESSION['type'] !== 'resident') {
                 });
         }
 
-        // Fetch and display recent security contacts
-        function loadRecentSecurityContacts() {
-            fetch('../api.php?type=resident&fetch=recent_security_contacts&created_by=<?php echo $_SESSION['id']; ?>')
-                .then(response => response.json())
-                .then(security => {
-                    const recentList = document.getElementById('recentSecurityList');
-                    recentList.innerHTML = '';
-                    if (security.length === 0) {
-                        recentList.innerHTML = '<div class="text-muted">No recent contacts</div>';
-                        return;
-                    }
-                    security.forEach(guard => {
-                        const div = document.createElement('div');
-                        div.className = 'user-item';
-                        div.textContent = guard.user;
-                        div.onclick = () => selectSecurity(guard.id, guard.user);
-                        recentList.appendChild(div);
-                    });
-                });
-        }
 
         // Select a security guard to chat with
         function selectSecurity(id, name) {

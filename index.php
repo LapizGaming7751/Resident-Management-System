@@ -16,14 +16,14 @@
         <div class="container min-vh-100 d-flex justify-content-center align-items-center">
             <div class="card p-4" style="max-width: 400px; width: 100%;">
                 <h1 class="mb-4 text-center">Login Security Guard</h1>
-                <form id="loginForm">
+                <form method="POST" action="login_handler.php">
                     <div class="mb-3">
                         <label for="user" class="form-label">Username</label>
-                        <input type="text" name="user" id="user" class="form-control"/>
+                        <input type="text" name="user" id="user" class="form-control" required />
                     </div>
                     <div class="mb-3">
                         <label for="pass" class="form-label">Password</label>
-                        <input type="password" name="pass" id="pass" class="form-control"/>
+                        <input type="password" name="pass" id="pass" class="form-control" required />
                     </div>
                     <button type="submit" class="btn btn-primary w-100 mb-2">Login</button>
                 </form>
@@ -32,36 +32,5 @@
         </div>
     </body>
 
-    <script>
-        const API_URL = 'http://localhost/Finals_CheckInSystem%20ai/api.php';
-
-        document.getElementById("loginForm").addEventListener("submit", e =>{
-            e.preventDefault();
-
-            const user = document.getElementById('user').value;
-            const pass = document.getElementById('pass').value;
-            const type = "security";
-            const url = `${API_URL}?type=${type}&user=${user}&pass=${pass}`;
-
-            fetch(url, {
-                method: 'GET',
-                headers: {'Content-type':'application/json'}
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Unable to find security guard');
-                }
-                return response.json();
-            })
-            .then(data => {
-                alert(data.message);
-                if(!data.error){
-                    window.location.href = "scanner.php";
-                }
-            })
-            .catch(error => {
-                console.error('Error finding security guard: ', error);
-            });
-        });
-    </script>
+    <!-- JS login removed: now handled by PHP form POST for proper session management -->
 </html>
