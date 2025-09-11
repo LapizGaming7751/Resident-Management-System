@@ -4,29 +4,31 @@
     <head>
         <title>Manage Visitors</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="../css.css">
     </head>
     <body>
-        <div class="d-flex min-vh-100" style="background: none;">
+        <?php include('../topbar.php'); ?>
+        <div class="main-content" style="margin-left: 250px; min-height: calc(100vh - 70px); padding-top: 20px;">
             <!-- Sidebar -->
-            <div class="d-flex flex-column bg-white p-3" style="min-width:200px; height:100vh; border-radius:0; box-shadow:0 4px 16px rgba(0,0,0,0.08); justify-content:space-between; position:sticky; top:0; left:0;">
-                <div>
-                    <h4 class="mb-4 text-center">Welcome,<br><?=$_SESSION['user']?></h4>
-                    <hr class="my-3">
-                    <button onclick="window.location.href='manage.php';" class="btn btn-primary w-100 mb-2" disabled>Manage QR</button>
-                    <button onclick="window.location.href='generateQR.php';" class="btn btn-outline-primary w-100 mb-2">Create QR</button>
-                    <button onclick="window.location.href='chat_resident.php';" class="btn btn-outline-primary w-100 mb-2">Security Chat</button>
-                </div>
-                <button onclick="window.location.href='logout.php';" class="btn btn-danger w-100 mt-2">Logout</button>
-            </div>
+            <?php $current_page = 'manage'; include 'sidebar.php'; ?>
             <!-- Main Card -->
-            <div class="container d-flex justify-content-center align-items-center flex-grow-1">
-                <div class="card p-4" style="max-width: 700px; width: 100%;">
-                    <h2 class="mt-3">Notifications</h2>
-                    <div id="notifications" class="mb-4"></div>
-                    <hr class="my-3">
-                    <h2>Manage Invites</h2>
-                    <div id="qr"></div>
+            <div class="container-fluid" style="padding: 20px;">
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card p-4 mb-4">
+                            <h2 class="mt-3">Notifications</h2>
+                            <div id="notifications" class="mb-4"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card p-4">
+                            <h2>Manage Invites</h2>
+                            <div id="qr"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -89,33 +91,37 @@
                 const container = document.getElementById('qr');
                 container.innerHTML = '';
 
+                console.log('Loading QR codes:', data.length, 'items');
 
-                const row = document.createElement('div');
-                row.className = 'row g-3';
+                // Create a proper grid container
+                container.innerHTML = '';
+                container.className = 'qr-grid-container';
+                
                 data.forEach(qr => {
-                    const col = document.createElement('div');
-                    col.className = 'col-md-6 col-lg-4';
-                    col.innerHTML = `
-                        <div class="card h-100">
-                            <div class="card-body d-flex flex-column align-items-center">
-                                <img src="../qr/${qr.token}.png" alt="QR Code" class="mb-3" style="width: 128px; height: 128px; object-fit: contain;">
-                                <div class="mb-2 w-100">
-                                    <div><strong>ID:</strong> ${qr.id}</div>
-                                    <div><strong>Token:</strong> ${qr.token}</div>
-                                    <div><strong>Expires:</strong> ${qr.expiry}</div>
-                                    <div><strong>Visitor:</strong> ${qr.intended_visitor}</div>
-                                    <div><strong>Car Plate:</strong> ${qr.plate_id}</div>
+                    const cardDiv = document.createElement('div');
+                    cardDiv.className = 'qr-card-item';
+                    cardDiv.innerHTML = `
+                        <div class="card qr-card-uniform">
+                            <div class="card-body">
+                                <div class="qr-image-container">
+                                    <img src="../qr/${qr.token}.png" alt="QR Code" class="qr-image">
                                 </div>
-                                <div class="d-flex gap-2 mt-auto w-100">
-                                    <button onclick="revokeInvite(${qr.id})" class="btn btn-danger btn-sm flex-fill">Delete</button>
-                                    <button onclick="window.location.href='editQR.php?id=${qr.id}&token=${qr.token}&plate=${qr.plate_id}&visitor=${qr.intended_visitor}&date=${qr.expiry}'" class="btn btn-outline-primary btn-sm flex-fill">Edit QR</button>
+                                <div class="qr-content">
+                                    <div class="qr-field"><strong>ID:</strong> ${qr.id}</div>
+                                    <div class="qr-field"><strong>Token:</strong> ${qr.token}</div>
+                                    <div class="qr-field"><strong>Expires:</strong> ${qr.expiry}</div>
+                                    <div class="qr-field"><strong>Visitor:</strong> ${qr.intended_visitor || 'N/A'}</div>
+                                    <div class="qr-field"><strong>Car Plate:</strong> ${qr.plate_id || 'N/A'}</div>
+                                </div>
+                                <div class="qr-actions">
+                                    <button onclick="revokeInvite(${qr.id})" class="btn btn-danger btn-sm">Delete</button>
+                                    <button onclick="window.location.href='editQR.php?id=${qr.id}&token=${qr.token}&plate=${qr.plate_id}&visitor=${qr.intended_visitor}&date=${qr.expiry}'" class="btn btn-outline-primary btn-sm">Edit QR</button>
                                 </div>
                             </div>
                         </div>
                     `;
-                    row.appendChild(col);
+                    container.appendChild(cardDiv);
                 });
-                container.appendChild(row);
             } catch (error) {
                 console.error('Error fetching QRs:', error);
             }

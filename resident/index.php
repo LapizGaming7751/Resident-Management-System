@@ -21,7 +21,7 @@
                     <div class="text-center mb-2">
                         <a href="reset_password.php" class="link-primary mb-2 d-block">Forgot your password?</a>
                     </div>
-                    <button onclick="window.location.href='../index.php'" type="button" class="btn btn-outline-primary w-100">Login as Security</button>
+                    <button onclick="window.location.href='../security/index.php'" type="button" class="btn btn-outline-primary w-100">Login as Security</button>
                 </form>
             </div>
         </div>

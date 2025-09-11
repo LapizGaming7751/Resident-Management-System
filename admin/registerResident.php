@@ -3,6 +3,7 @@
         <title>Register new Resident</title>
     </head>
     <body>
+        <?php include('../topbar.php'); ?>
         <h1>Register Resident</h1>
         <form id="registerForm">
             <label for="user">Username: </label>

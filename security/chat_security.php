@@ -12,23 +12,16 @@ if (!isset($_SESSION['type']) || $_SESSION['type'] !== 'security') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Security Chat</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="css.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="../css.css">
 </head>
 <body>
-    <div class="d-flex min-vh-100" style="background: none;">
+    <?php include('../topbar.php'); ?>
+    <div class="main-content" style="margin-left: 250px; min-height: calc(100vh - 70px); padding-top: 20px;">
         <!-- Sidebar -->
-        <div class="d-flex flex-column bg-white p-3" style="min-width:200px; height:100vh; border-radius:0; box-shadow:0 4px 16px rgba(0,0,0,0.08); justify-content:space-between; position:sticky; top:0; left:0;">
-            <div>
-                <h4 class="mb-4 text-center">Welcome,<br><?=$_SESSION['user']?></h4>
-                <hr class="my-3">
-                <button onclick="window.location.href='scanner.php';" class="btn btn-outline-primary w-100 mb-2">Scanner</button>
-                <button onclick="window.location.href='logs.php';" class="btn btn-outline-primary w-100 mb-2">Manage Logs</button>
-                <button class="btn btn-primary w-100 mb-2" disabled>Security Chat</button>
-            </div>
-            <button onclick="window.location.href='logout.php';" class="btn btn-danger w-100 mt-2">Logout</button>
-        </div>
+        <?php $current_page = 'chat'; include 'sidebar.php'; ?>
         <!-- Main Card -->
-        <div class="container d-flex justify-content-center align-items-center flex-grow-1">
+        <div class="container d-flex justify-content-center align-items-center" style="min-height: calc(100vh - 90px);">
             <div class="card p-4 w-100" style="max-width: 900px;">
                 <div class="row">
                     <div class="col-md-4 mb-3 mb-md-0">
@@ -57,7 +50,7 @@ if (!isset($_SESSION['type']) || $_SESSION['type'] !== 'security') {
 
         // Fetch and display resident list
         function loadResidents() {
-            fetch('api.php?type=security&fetch=resident_list')
+            fetch('../api.php?type=security&fetch=resident_list')
                 .then(response => response.json())
                 .then(residents => {
                     const residentList = document.getElementById('residentList');
@@ -92,7 +85,7 @@ if (!isset($_SESSION['type']) || $_SESSION['type'] !== 'security') {
         // Load messages for selected resident
         function loadMessages() {
             if (!currentResidentId) return;
-            fetch(`api.php?type=security&fetch=messages&resident_id=${currentResidentId}`)
+            fetch(`../api.php?type=security&fetch=messages&resident_id=${currentResidentId}`)
                 .then(response => response.json())
                 .then(messages => {
                     const chatMessages = document.getElementById('chatMessages');
@@ -121,7 +114,7 @@ if (!isset($_SESSION['type']) || $_SESSION['type'] !== 'security') {
             const message = messageInput.value.trim();
             if (!message) return;
 
-            fetch('api.php', {
+            fetch('../api.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

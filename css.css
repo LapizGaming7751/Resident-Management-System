@@ -285,3 +285,112 @@ display:flex;
 gap:0.5rem;
 flex-wrap:wrap;
 }
+
+/* QR Grid Container */
+.qr-grid-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    padding: 20px 0;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Responsive grid - 4 cards per row on larger screens */
+@media (min-width: 1200px) {
+    .qr-grid-container {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+@media (min-width: 992px) and (max-width: 1199px) {
+    .qr-grid-container {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+    .qr-grid-container {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 767px) {
+    .qr-grid-container {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* QR Card Item */
+.qr-card-item {
+    width: 100%;
+    height: 100%;
+}
+
+/* Uniform QR Card Styling */
+.qr-card-uniform {
+    height: 400px;
+    transition: all 0.3s ease;
+    border: 1px solid #e9ecef;
+    display: flex;
+    flex-direction: column;
+}
+
+.qr-card-uniform:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.qr-card-uniform .card-body {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 20px;
+}
+
+/* QR Image Container */
+.qr-image-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 15px;
+    height: 140px;
+}
+
+.qr-image {
+    width: 120px;
+    height: 120px;
+    object-fit: contain;
+    border: 1px solid #dee2e6;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+/* QR Content */
+.qr-content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    margin-bottom: 15px;
+}
+
+.qr-field {
+    margin-bottom: 8px;
+    line-height: 1.4;
+    word-break: break-word;
+    font-size: 0.9rem;
+}
+
+/* QR Actions */
+.qr-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: auto;
+}
+
+.qr-actions .btn {
+    flex: 1;
+    font-size: 0.875rem;
+    padding: 8px 12px;
+}

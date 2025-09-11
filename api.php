@@ -159,6 +159,10 @@ switch ($method) {
                         $list = fetchList($conn, "SELECT logs.id, logs.token, logs.scan_time, logs.scan_type, logs.scan_by, security.user AS scanner_username, codes.intended_visitor AS intended_visitor FROM logs LEFT JOIN security ON logs.scan_by = security.id LEFT JOIN codes ON logs.token = codes.token");
                         echo json_encode($list !== false ? $list : []);
                         break;
+                    case "security":
+                        $list = fetchList($conn, "SELECT * FROM security");
+                        echo json_encode($list !== false ? $list : []);
+                        break;
                     default:
                         errorResponse("Fetch not recognized");
                 }
@@ -197,6 +201,35 @@ switch ($method) {
             // ...validation logic...
             $sql = "INSERT INTO residents (user, pass, room_code) VALUES ('$user', '$pass', '$room_code')";
             echo json_encode(insertRow($conn, $sql));
+        } elseif ($type === "register_security") {
+            $user = $requestData['user'] ?? '';
+            $pass = password_hash($requestData['pass'] ?? '', PASSWORD_DEFAULT);
+
+            if (empty($user) || empty($requestData['pass'])) {
+                echo json_encode(["message" => "Username and password required", "error" => true]);
+                exit;
+            }
+
+            $sql = "INSERT INTO security (user, pass) VALUES ('$user', '$pass')";
+            echo json_encode(insertRow($conn, $sql));
+        } elseif ($type === "register_admin") {
+            $user = $requestData['user'] ?? '';
+            $pass = password_hash($requestData['pass'] ?? '', PASSWORD_DEFAULT);
+            $level = $requestData['access_level'] ?? 1; // default = 1
+
+            if (empty($user) || empty($requestData['pass'])) {
+                echo json_encode(["message" => "Username and password required", "error" => true]);
+                exit;
+            }
+
+            // ensure access_level is numeric
+            if (!ctype_digit(strval($level))) {
+                echo json_encode(["message" => "Invalid access level", "error" => true]);
+                exit;
+            }
+
+            $sql = "INSERT INTO admins (user, pass, access_level) VALUES ('$user', '$pass', '$level')";
+            echo json_encode(insertRow($conn, $sql));
         } elseif ($type === "resident") {
             $created_by = $requestData['created_by'] ?? '';
             // Validate created_by is numeric
@@ -209,7 +242,100 @@ switch ($method) {
             $expiry = $requestData['expiry'] ?? '';
             $token = bin2hex(random_bytes(5));
             $sql = "INSERT INTO codes (token, created_by, expiry, intended_visitor, plate_id) VALUES ('$token','$created_by','$expiry','$name','$plate')";
-            echo json_encode(insertRow($conn, $sql));
+            
+            // Insert into database first
+            $result = $conn->query($sql);
+            if (!$result) {
+                echo json_encode(["message" => "Database insert failed: " . $conn->error, "error" => true]);
+                exit;
+            }
+            
+            // Generate QR code image
+            $qr_path = "qr/" . $token . ".png";
+            if (!file_exists("qr")) {
+                mkdir("qr", 0777, true);
+            }
+            
+            // Generate QR code with token as content
+            QRcode::png($token, $qr_path, 'L', 4, 2);
+            
+            // Get the inserted ID
+            $insert_id = $conn->insert_id;
+            
+            echo json_encode([
+                "message" => "QR code created successfully", 
+                "error" => false, 
+                "id" => $insert_id, 
+                "token" => $token
+            ]);
+        } elseif ($type === "guest") {
+            $token = $requestData['token'] ?? '';
+            $scan_by = $requestData['scan_by'] ?? '';
+
+            if (empty($token) || empty($scan_by)) {
+                echo json_encode(["message" => "Token and scan_by are required", "error" => true]);
+                exit;
+            }
+
+            // Check if token exists and is still valid
+            $sql = "SELECT c.*, r.user AS resident_name, r.room_code 
+                    FROM codes c 
+                    LEFT JOIN residents r ON c.created_by = r.id 
+                    WHERE c.token = '$token' AND c.expiry > NOW()";
+            $result = $conn->query($sql);
+
+            if ($result && $result->num_rows > 0) {
+                $row = $result->fetch_assoc();
+
+                // Check if this token has already been logged as 'In'
+                $logCheck = $conn->query("SELECT * FROM logs WHERE token = '$token' ORDER BY scan_time DESC LIMIT 1");
+
+                if ($logCheck && $logCheck->num_rows > 0) {
+                    $lastLog = $logCheck->fetch_assoc();
+
+                    if ($lastLog['scan_type'] === 'In') {
+                        // If last was 'In', this scan should be 'Out' → expire the code
+                        $log_sql = "INSERT INTO logs (token, scan_type, scan_by) 
+                                    VALUES ('$token', 'Out', '$scan_by')";
+                        $conn->query($log_sql);
+
+                        // Expire the code immediately
+                        $conn->query("UPDATE codes SET expiry = NOW() WHERE token = '$token'");
+
+                        echo json_encode([
+                            "message" => "Visitor {$row['intended_visitor']} checked OUT successfully.",
+                            "error" => false,
+                            "visitor" => $row['intended_visitor'],
+                            "plate" => $row['plate_id'],
+                            "resident" => $row['resident_name'],
+                            "room" => $row['room_code'],
+                            "status" => "Out"
+                        ]);
+                        exit;
+                    }
+                }
+
+                // Default → first scan, mark as 'In'
+                $log_sql = "INSERT INTO logs (token, scan_type, scan_by) 
+                            VALUES ('$token', 'In', '$scan_by')";
+                $conn->query($log_sql);
+
+                echo json_encode([
+                    "message" => "Welcome {$row['intended_visitor']}! Entry logged successfully.",
+                    "error" => false,
+                    "visitor" => $row['intended_visitor'],
+                    "plate" => $row['plate_id'],
+                    "resident" => $row['resident_name'],
+                    "room" => $row['room_code'],
+                    "status" => "In"
+                ]);
+            } else {
+                echo json_encode([
+                    "message" => "Invalid or expired QR code. Please contact the resident for a new invitation.",
+                    "error" => true
+                ]);
+            }
+
         } elseif ($type === "chat") {
             $sender_id = $requestData['sender_id'] ?? '';
             $sender_type = $requestData['sender_type'] ?? '';
@@ -233,7 +359,31 @@ switch ($method) {
                 $plate = $requestData['plate'] ?? '';
                 $expiry = $requestData['expiry'] ?? '';
                 $sql = "UPDATE codes SET expiry='$expiry', intended_visitor='$name', plate_id='$plate' WHERE id = '$id'";
-                echo json_encode(updateRow($conn, $sql));
+                
+                $result = $conn->query($sql);
+                if (!$result) {
+                    echo json_encode(["message" => "Update failed: " . $conn->error, "error" => true]);
+                    exit;
+                }
+                
+                // Get the token for this code to regenerate QR
+                $token_sql = "SELECT token FROM codes WHERE id = '$id'";
+                $token_result = $conn->query($token_sql);
+                if ($token_result && $token_result->num_rows > 0) {
+                    $row = $token_result->fetch_assoc();
+                    $token = $row['token'];
+                    
+                    // Regenerate QR code image
+                    $qr_path = "qr/" . $token . ".png";
+                    if (!file_exists("qr")) {
+                        mkdir("qr", 0777, true);
+                    }
+                    
+                    // Generate QR code with token as content
+                    QRcode::png($token, $qr_path, 'L', 4, 2);
+                }
+                
+                echo json_encode(["message" => "Update successful", "error" => false]);
             }
         }
         break;
@@ -250,6 +400,8 @@ switch ($method) {
                 $sql = "DELETE FROM admins WHERE id = '$id'";
             } elseif ($fetch === 'resident') {
                 $sql = "DELETE FROM residents WHERE id = '$id'";
+            } elseif ($fetch === 'security') {
+                $sql = "DELETE FROM security WHERE id = '$id'";
             }
             echo json_encode(deleteRow($conn, $sql));
         }

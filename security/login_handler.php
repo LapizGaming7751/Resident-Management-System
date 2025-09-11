@@ -16,7 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['id'] = $row['id'];
             $_SESSION['user'] = $row['user'];
             $_SESSION['type'] = 'security';
-            header('Location: scanner.php');
+                header('Location: scanner.php');
             exit;
         }
     }
