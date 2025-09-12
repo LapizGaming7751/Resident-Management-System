@@ -11,7 +11,7 @@
 
 <div class="main-content" style="margin-left: 250px; min-height: calc(100vh - 70px); padding-top: 20px;">
     <?php $current_page = 'logs'; include('sidebar.php'); ?>
-    <div class="row g-4">
+    <div class="row g-4 container">
         <!-- Logs Panel -->
         <div class="col-lg-6">
             <div class="card shadow-sm">
@@ -132,19 +132,33 @@ function getAdmins(){
                 container.innerHTML = '<p class="text-muted">No admins found.</p>';
                 return;
             }
+
+            const currentAdminId = <?= json_encode($_SESSION['id']) ?>; // PHP injects current session user ID
+
             data.forEach(admin=>{
                 const div = document.createElement('div');
                 div.className = "d-flex justify-content-between align-items-center border-bottom py-2";
+
+                let actions = '';
+                if (admin.id != currentAdminId) {
+                    actions = `
+                        <button class="btn btn-sm btn-outline-secondary" 
+                            onclick="window.location.href='editAdmin.php?id=${admin.id}&name=${admin.user}&level=${admin.access_level}'">Edit</button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteAdmin(${admin.id})">Delete</button>
+                    `;
+                } else {
+                    actions = `<span class="text-muted">You</span>`;
+                }
+
                 div.innerHTML = `
                     <span>ID: ${admin.id} | ${admin.user} (Level: ${admin.access_level})</span>
-                    <span>
-                        <button class="btn btn-sm btn-outline-secondary" onclick="window.location.href='editAdmin.php?id=${admin.id}&name=${admin.user}&level=${admin.access_level}'">Edit</button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="deleteAdmin(${admin.id})">Delete</button>
-                    </span>`;
+                    <span>${actions}</span>
+                `;
                 container.appendChild(div);
             });
         });
 }
+
 
 function getSecurity(){
     fetch(`${API_URL}?type=admin&fetch=security`)

@@ -214,21 +214,42 @@ switch ($method) {
             echo json_encode(insertRow($conn, $sql));
         } elseif ($type === "register_admin") {
             $user = $requestData['user'] ?? '';
-            $pass = password_hash($requestData['pass'] ?? '', PASSWORD_DEFAULT);
-            $level = $requestData['access_level'] ?? 1; // default = 1
+            $pass = $requestData['pass'] ?? '';
+            $access_level = intval($requestData['access_level'] ?? 1);
 
-            if (empty($user) || empty($requestData['pass'])) {
-                echo json_encode(["message" => "Username and password required", "error" => true]);
+            // Ensure user is logged in
+            if (!isset($_SESSION['id']) || !isset($_SESSION['access_level'])) {
+                echo json_encode(["error" => true, "message" => "Unauthorized"]);
                 exit;
             }
 
-            // ensure access_level is numeric
-            if (!ctype_digit(strval($level))) {
-                echo json_encode(["message" => "Invalid access level", "error" => true]);
+            // Prevent creating admin with higher level than yourself
+            if ($access_level > $_SESSION['access_level']) {
+                echo json_encode(["error" => true, "message" => "You cannot assign a higher access level than your own."]);
                 exit;
             }
 
-            $sql = "INSERT INTO admins (user, pass, access_level) VALUES ('$user', '$pass', '$level')";
+            if (empty($user) || empty($pass)) {
+                echo json_encode(["error" => true, "message" => "Username and password required"]);
+                exit;
+            }
+
+            $hashedPass = password_hash($pass, PASSWORD_BCRYPT);
+
+            $sql = "INSERT INTO admins (user, pass, access_level) 
+                    VALUES ('$user', '$hashedPass', '$access_level')";
+            echo json_encode(insertRow($conn, $sql));
+        } elseif ($type === "register_security") {
+            $user = $requestData['user'] ?? '';
+            $pass = $requestData['pass'] ?? '';
+
+            if (empty($user) || empty($pass)) {
+                echo json_encode(["error" => true, "message" => "Username and password required"]);
+                exit;
+            }
+
+            $hashedPass = password_hash($pass, PASSWORD_BCRYPT);
+            $sql = "INSERT INTO security (user, pass) VALUES ('$user', '$hashedPass')";
             echo json_encode(insertRow($conn, $sql));
         } elseif ($type === "resident") {
             $created_by = $requestData['created_by'] ?? '';
@@ -385,18 +406,57 @@ switch ($method) {
                 
                 echo json_encode(["message" => "Update successful", "error" => false]);
             }
+        } elseif ($type === "update_resident") {
+            if (isset($requestData['id']) && !isset($requestData['pass'])) {
+                $id = $requestData['id'];
+                $user = $requestData['user'] ?? '';
+                $room_code = $requestData['room_code'] ?? '';
+                // ...validation logic...
+                $sql = "UPDATE residents SET user='$user', room_code='$room_code' WHERE id = '$id'";
+                echo json_encode(updateRow($conn, $sql));
+            }
+        } elseif ($type === "update_admin") {
+            if (isset($requestData['id'])) {
+                $id = $requestData['id'];
+                $user = $requestData['user'] ?? '';
+                $access_level = $requestData['access_level'] ?? 1;
+
+                // Optional validation
+                if (empty($user) || !ctype_digit(strval($access_level))) {
+                    echo json_encode(["message" => "Invalid data provided for admin update", "error" => true]);
+                    exit;
+                }
+
+                $sql = "UPDATE admins SET user='$user', access_level='$access_level' WHERE id = '$id'";
+                echo json_encode(updateRow($conn, $sql));
+            }
+        } elseif ($type === "update_security") {
+            if (isset($requestData['id'])) {
+                $id = $requestData['id'];
+                $user = $requestData['user'] ?? '';
+                $sql = "UPDATE security SET user='$user' WHERE id='$id'";
+                echo json_encode(updateRow($conn, $sql));
+            }
         }
         break;
     case "DELETE":
         $type = $requestData['type'] ?? '';
+        $id   = $requestData['id'] ?? '';
+        $fetch = $requestData['fetch'] ?? '';
+
         if ($type === "resident") {
-            $id = $requestData['id'] ?? '';
             $sql = "DELETE FROM codes WHERE id = '$id'";
             echo json_encode(deleteRow($conn, $sql));
         } elseif ($type === "admin") {
-            $id = $requestData['id'] ?? '';
-            $fetch = $requestData['fetch'] ?? '';
             if ($fetch === 'admin') {
+                // Prevent deleting your own account
+                if ($id == $_SESSION['id']) {
+                    echo json_encode([
+                        "error" => true,
+                        "message" => "You cannot delete your own account."
+                    ]);
+                    break;
+                }
                 $sql = "DELETE FROM admins WHERE id = '$id'";
             } elseif ($fetch === 'resident') {
                 $sql = "DELETE FROM residents WHERE id = '$id'";

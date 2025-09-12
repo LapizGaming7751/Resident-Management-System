@@ -17,18 +17,11 @@ $access_level = $_SESSION['access_level'] ?? 1;
         </div>
         <hr class="my-3 sidebar-divider">
 
-        <button onclick="window.location.href='manageLogs.php';" 
+        <button onclick="window.location.href='manage.php';" 
             class="btn <?= $current_page === 'logs' ? 'btn-primary' : 'btn-outline-primary' ?> w-100 mb-2 sidebar-button" 
             <?= $current_page === 'logs' ? 'disabled' : '' ?>>
             <i class="bi bi-journal-text me-2"></i>
             <span class="sidebar-text">Manage Logs</span>
-        </button>
-
-        <button onclick="window.location.href='manageResidents.php';" 
-            class="btn <?= $current_page === 'residents' ? 'btn-primary' : 'btn-outline-primary' ?> w-100 mb-2 sidebar-button" 
-            <?= $current_page === 'residents' ? 'disabled' : '' ?>>
-            <i class="bi bi-people-fill me-2"></i>
-            <span class="sidebar-text">Manage Residents</span>
         </button>
 
         <button onclick="window.location.href='registerResident.php';" 
@@ -36,13 +29,6 @@ $access_level = $_SESSION['access_level'] ?? 1;
             <?= $current_page === 'add_resident' ? 'disabled' : '' ?>>
             <i class="bi bi-person-plus-fill me-2"></i>
             <span class="sidebar-text">Add Resident</span>
-        </button>
-
-        <button onclick="window.location.href='manageSecurity.php';" 
-            class="btn <?= $current_page === 'security' ? 'btn-primary' : 'btn-outline-primary' ?> w-100 mb-2 sidebar-button" 
-            <?= $current_page === 'security' ? 'disabled' : '' ?>>
-            <i class="bi bi-shield-lock-fill me-2"></i>
-            <span class="sidebar-text">Manage Security</span>
         </button>
 
         <button onclick="window.location.href='registerSecurity.php';" 
@@ -53,13 +39,6 @@ $access_level = $_SESSION['access_level'] ?? 1;
         </button>
 
         <?php if ($access_level >= 2) { ?>
-        <button onclick="window.location.href='manageAdmins.php';" 
-            class="btn <?= $current_page === 'admins' ? 'btn-primary' : 'btn-outline-primary' ?> w-100 mb-2 sidebar-button" 
-            <?= $current_page === 'admins' ? 'disabled' : '' ?>>
-            <i class="bi bi-person-badge-fill me-2"></i>
-            <span class="sidebar-text">Manage Admins</span>
-        </button>
-
         <button onclick="window.location.href='registerAdmin.php';" 
             class="btn <?= $current_page === 'add_admin' ? 'btn-primary' : 'btn-outline-primary' ?> w-100 mb-2 sidebar-button" 
             <?= $current_page === 'add_admin' ? 'disabled' : '' ?>>
