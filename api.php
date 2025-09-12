@@ -1,6 +1,6 @@
 <?php
 // Unified API for Finals_CheckInSystem
-// Cleaner, more maintainable version of api.php
+// Fixed version with proper announcement CRUD operations
 
 date_default_timezone_set("Singapore");
 include("phpqrcode/qrlib.php");
@@ -112,7 +112,11 @@ switch ($method) {
             errorResponse("Invalid resident/guard ID: $id");
         }
         if ($type === "resident") {
-            if ($id && ($fetch === '' || $fetch === 'qr' || !isset($_GET['fetch']))) {
+            if ($fetch === "announcements") {
+                $list = fetchList($conn, "SELECT * FROM announcements ORDER BY post_time DESC");
+                echo json_encode($list !== false ? $list : []);
+                exit;
+            }elseif ($id && ($fetch === '' || $fetch === 'qr' || !isset($_GET['fetch']))) {
                 // QR fetch: ?type=resident&created_by=ID or ?type=resident&created_by=ID&fetch=qr
                 $list = fetchList($conn, "SELECT * FROM codes WHERE created_by = '$id'");
                 echo json_encode($list !== false ? $list : []);
@@ -163,6 +167,10 @@ switch ($method) {
                         $list = fetchList($conn, "SELECT * FROM security");
                         echo json_encode($list !== false ? $list : []);
                         break;
+                    case "announcements":
+                        $list = fetchList($conn, "SELECT * FROM announcements ORDER BY post_time DESC");
+                        echo json_encode($list !== false ? $list : []);
+                        break;
                     default:
                         errorResponse("Fetch not recognized");
                 }
@@ -194,6 +202,19 @@ switch ($method) {
         break;
     case "POST":
         $type = $requestData['type'] ?? '';
+        
+        // Handle announcement deletion (using POST with action parameter)
+        if ($type === "admin" && isset($requestData['fetch']) && $requestData['fetch'] === 'announcement' && isset($requestData['action']) && $requestData['action'] === 'delete') {
+            $id = $requestData['id'] ?? '';
+            if (empty($id)) {
+                echo json_encode(["message" => "Announcement ID is required", "error" => true]);
+                exit;
+            }
+            $sql = "DELETE FROM announcements WHERE id = '$id'";
+            echo json_encode(deleteRow($conn, $sql));
+            exit;
+        }
+        
         if ($type === "register_resident") {
             $user = $requestData['user'] ?? '';
             $pass = password_hash($requestData['pass'] ?? '', PASSWORD_DEFAULT);
@@ -238,18 +259,6 @@ switch ($method) {
 
             $sql = "INSERT INTO admins (user, pass, access_level) 
                     VALUES ('$user', '$hashedPass', '$access_level')";
-            echo json_encode(insertRow($conn, $sql));
-        } elseif ($type === "register_security") {
-            $user = $requestData['user'] ?? '';
-            $pass = $requestData['pass'] ?? '';
-
-            if (empty($user) || empty($pass)) {
-                echo json_encode(["error" => true, "message" => "Username and password required"]);
-                exit;
-            }
-
-            $hashedPass = password_hash($pass, PASSWORD_BCRYPT);
-            $sql = "INSERT INTO security (user, pass) VALUES ('$user', '$hashedPass')";
             echo json_encode(insertRow($conn, $sql));
         } elseif ($type === "resident") {
             $created_by = $requestData['created_by'] ?? '';
@@ -365,7 +374,36 @@ switch ($method) {
             $message = $conn->real_escape_string($requestData['message'] ?? '');
             $sql = "INSERT INTO messages (sender_id, sender_type, receiver_id, receiver_type, message) VALUES ('$sender_id', '$sender_type', '$receiver_id', '$receiver_type', '$message')";
             echo json_encode(insertRow($conn, $sql));
+        } elseif ($type === "create_announcement") {
+            $title = $conn->real_escape_string($requestData['title'] ?? '');
+            $content = $conn->real_escape_string($requestData['content'] ?? '');
+
+            if (empty($title) || empty($content)) {
+                echo json_encode(["message" => "Title and content are required", "error" => true]);
+                exit;
+            }
+
+            // Check what columns exist in announcements table
+            $columns_check = $conn->query("SHOW COLUMNS FROM announcements");
+            $available_columns = [];
+            while ($col = $columns_check->fetch_assoc()) {
+                $available_columns[] = $col['Field'];
+            }
+            
+            // Build INSERT query based on available columns
+            if (in_array('created_by', $available_columns)) {
+                $created_by = $_SESSION['id'] ?? 0;
+                $sql = "INSERT INTO announcements (title, content, post_time, created_by) 
+                        VALUES ('$title', '$content', '$time', '$created_by')";
+            } else {
+                // If created_by doesn't exist, just insert title, content, and post_time
+                $sql = "INSERT INTO announcements (title, content, post_time) 
+                        VALUES ('$title', '$content', '$time')";
+            }
+            
+            echo json_encode(insertRow($conn, $sql));
         }
+
         break;
     case "PUT":
         $type = $requestData['type'] ?? '';
@@ -437,7 +475,20 @@ switch ($method) {
                 $sql = "UPDATE security SET user='$user' WHERE id='$id'";
                 echo json_encode(updateRow($conn, $sql));
             }
+        } elseif ($type === "edit_announcement") {
+            $id = $requestData['id'] ?? '';
+            $title = $conn->real_escape_string($requestData['title'] ?? '');
+            $content = $conn->real_escape_string($requestData['content'] ?? '');
+
+            if (empty($id) || empty($title) || empty($content)) {
+                echo json_encode(["message" => "ID, title, and content are required", "error" => true]);
+                exit;
+            }
+
+            $sql = "UPDATE announcements SET title='$title', content='$content', post_time='$time' WHERE id='$id'";
+            echo json_encode(updateRow($conn, $sql));
         }
+
         break;
     case "DELETE":
         $type = $requestData['type'] ?? '';
@@ -462,6 +513,8 @@ switch ($method) {
                 $sql = "DELETE FROM residents WHERE id = '$id'";
             } elseif ($fetch === 'security') {
                 $sql = "DELETE FROM security WHERE id = '$id'";
+            } elseif ($fetch === 'announcement') {
+                $sql = "DELETE FROM announcements WHERE id = '$id'";
             }
             echo json_encode(deleteRow($conn, $sql));
         }
@@ -471,3 +524,4 @@ switch ($method) {
         echo json_encode(["message" => "Method not allowed", "error" => true]);
         break;
 }
+?>

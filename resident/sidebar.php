@@ -16,6 +16,10 @@ $current_page = $current_page ?? '';
             <h4 class="mb-0 text-center flex-grow-1 sidebar-text">Welcome,<br><?=$_SESSION['user']?></h4>
         </div>
         <hr class="my-3 sidebar-divider">
+        <button onclick="window.location.href='announcements.php';" class="btn <?= $current_page === 'announcements' ? 'btn-primary' : 'btn-outline-primary' ?> w-100 mb-2 sidebar-button" <?= $current_page === 'announcements' ? 'disabled' : '' ?>>
+            <i class="bi bi-newspaper me-2"></i>
+            <span class="sidebar-text">Announcements</span>
+        </button>
         <button onclick="window.location.href='manage.php';" class="btn <?= $current_page === 'manage' ? 'btn-primary' : 'btn-outline-primary' ?> w-100 mb-2 sidebar-button" <?= $current_page === 'manage' ? 'disabled' : '' ?>>
             <i class="bi bi-gear-fill me-2"></i>
             <span class="sidebar-text">Manage QR</span>
