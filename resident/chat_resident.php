@@ -8,6 +8,7 @@ if (!isset($_SESSION['type']) || $_SESSION['type'] !== 'resident') {
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="icon" type="image/x-icon" href="../ico/house-icon.ico">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Resident Chat</title>

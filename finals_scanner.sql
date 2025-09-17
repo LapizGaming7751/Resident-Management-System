@@ -96,16 +96,51 @@ CREATE TABLE `residents` (
   `id` int(255) NOT NULL,
   `user` varchar(255) NOT NULL,
   `pass` varchar(255) NOT NULL,
-  `room_code` varchar(255) NOT NULL
+  `email` varchar(255) NOT NULL,
+  `room_code` varchar(255) NOT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `residents`
 --
 
-INSERT INTO `residents` (`id`, `user`, `pass`, `room_code`) VALUES
-(1, 'Testing', '$2a$12$lgoh9LdftOu80NItsklYVuqammy2nz0Pj5tIX7sbqSlksQx/OepSq', '16-03-A1'),
-(2, 'Testing2', '$2a$12$QGQxxtUsddp462cR3YSnlO8CnXebddTD65muXaNA5SPMTy99Lkqwa', '13-04-B5');
+INSERT INTO `residents` (`id`, `user`, `pass`, `email`, `room_code`, `is_active`) VALUES
+(1, 'Testing', '$2a$12$lgoh9LdftOu80NItsklYVuqammy2nz0Pj5tIX7sbqSlksQx/OepSq', 'lapizgaming7751@gmail.com', '16-03-A1', 1),
+(2, 'Testing2', '$2a$12$QGQxxtUsddp462cR3YSnlO8CnXebddTD65muXaNA5SPMTy99Lkqwa', 'testing2@example.com', '13-04-B5', 1);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `security`
+--
+
+CREATE TABLE `security` (
+  `id` int(255) NOT NULL,
+  `user` varchar(255) NOT NULL,
+  `pass` varchar(255) NOT NULL,
+  `email` varchar(255) NOT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `invite_codes`
+--
+
+CREATE TABLE `invite_codes` (
+  `id` int(255) NOT NULL,
+  `code` varchar(255) NOT NULL,
+  `user_type` enum('resident','security') NOT NULL,
+  `email` varchar(255) NOT NULL,
+  `room_code` varchar(255) DEFAULT NULL,
+  `created_by` int(255) NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `expires_at` datetime NOT NULL,
+  `is_used` tinyint(1) NOT NULL DEFAULT 0,
+  `used_at` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Table structure for table `notifications`
@@ -171,6 +206,20 @@ ALTER TABLE `residents`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Indexes for table `security`
+--
+ALTER TABLE `security`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `invite_codes`
+--
+ALTER TABLE `invite_codes`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `code` (`code`),
+  ADD KEY `created_by` (`created_by`);
+
+--
 -- AUTO_INCREMENT for dumped tables
 --
 
@@ -199,6 +248,18 @@ ALTER TABLE `residents`
   MODIFY `id` int(255) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
+-- AUTO_INCREMENT for table `security`
+--
+ALTER TABLE `security`
+  MODIFY `id` int(255) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `invite_codes`
+--
+ALTER TABLE `invite_codes`
+  MODIFY `id` int(255) NOT NULL AUTO_INCREMENT;
+
+--
 -- Constraints for dumped tables
 --
 
@@ -207,6 +268,12 @@ ALTER TABLE `residents`
 --
 ALTER TABLE `codes`
   ADD CONSTRAINT `codes_ibfk_1` FOREIGN KEY (`created_by`) REFERENCES `residents` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `invite_codes`
+--
+ALTER TABLE `invite_codes`
+  ADD CONSTRAINT `invite_codes_ibfk_1` FOREIGN KEY (`created_by`) REFERENCES `admins` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

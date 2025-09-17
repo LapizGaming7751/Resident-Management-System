@@ -20,7 +20,7 @@ $access_level = $_SESSION['access_level'] ?? 1;
         <button onclick="window.location.href='announcements.php';" 
             class="btn <?= $current_page === 'announcements' ? 'btn-primary' : 'btn-outline-primary' ?> w-100 mb-2 sidebar-button" 
             <?= $current_page === 'announcements' ? 'disabled' : '' ?>>
-            <i class="bi bi-journal-text me-2"></i>
+            <i class="bi bi-newspaper me-2"></i>
             <span class="sidebar-text">Announcements</span>
         </button>
 

@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="icon" type="image/x-icon" href="ico/house-icon.ico">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Resident Management System</title>
@@ -40,6 +41,7 @@
                 }
             } else {
                 echo '<a href="resident/index.php" class="btn btn-primary btn-lg mx-2">Sign In</a>';
+                echo '<a href="register.php" class="btn btn-outline-primary btn-lg mx-2">Register with Invite Code</a>';
             }
             ?>
         </div>

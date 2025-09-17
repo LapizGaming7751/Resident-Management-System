@@ -22,9 +22,10 @@ if ($conn->connect_error) {
 
 session_start();
 header("Content-Type: application/json");
-header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Origin: " . ($_SERVER['HTTP_ORIGIN'] ?? 'http://localhost'));
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
+header("Access-Control-Allow-Credentials: true");
 
 $method = $_SERVER['REQUEST_METHOD'];
 if ($method == 'OPTIONS') {
@@ -171,6 +172,10 @@ switch ($method) {
                         $list = fetchList($conn, "SELECT * FROM announcements ORDER BY post_time DESC");
                         echo json_encode($list !== false ? $list : []);
                         break;
+                    case "invite_codes":
+                        $list = fetchList($conn, "SELECT ic.*, a.user as created_by_name FROM invite_codes ic LEFT JOIN admins a ON ic.created_by = a.id ORDER BY ic.created_at DESC");
+                        echo json_encode($list !== false ? $list : []);
+                        break;
                     default:
                         errorResponse("Fetch not recognized");
                 }
@@ -215,13 +220,213 @@ switch ($method) {
             exit;
         }
         
-        if ($type === "register_resident") {
-            $user = $requestData['user'] ?? '';
-            $pass = password_hash($requestData['pass'] ?? '', PASSWORD_DEFAULT);
+        if ($type === "create_resident_invite") {
+            $email = $requestData['email'] ?? '';
             $room_code = $requestData['room_code'] ?? '';
-            // ...validation logic...
-            $sql = "INSERT INTO residents (user, pass, room_code) VALUES ('$user', '$pass', '$room_code')";
-            echo json_encode(insertRow($conn, $sql));
+            $expiry_hours = intval($requestData['expiry_hours'] ?? 24);
+            
+            // Debug logging
+            error_log("Create resident invite - Session ID: " . session_id());
+            error_log("Create resident invite - Session data: " . print_r($_SESSION, true));
+            
+            // Ensure user is logged in as admin
+            if (!isset($_SESSION['id']) || $_SESSION['type'] !== 'admin') {
+                error_log("Unauthorized - Session ID: " . (isset($_SESSION['id']) ? $_SESSION['id'] : 'not set') . ", Type: " . (isset($_SESSION['type']) ? $_SESSION['type'] : 'not set'));
+                echo json_encode(["message" => "Unauthorized", "error" => true]);
+                exit;
+            }
+            
+            // Validation
+            if (empty($email) || empty($room_code)) {
+                echo json_encode(["message" => "Email and room code are required", "error" => true]);
+                exit;
+            }
+            
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                echo json_encode(["message" => "Invalid email format", "error" => true]);
+                exit;
+            }
+            
+            // Check if email already has an active invite
+            $checkStmt = $conn->prepare("SELECT id FROM invite_codes WHERE email = ? AND user_type = 'resident' AND is_used = 0 AND expires_at > NOW()");
+            $checkStmt->bind_param('s', $email);
+            $checkStmt->execute();
+            $existingResult = $checkStmt->get_result();
+            
+            if ($existingResult->num_rows > 0) {
+                echo json_encode(["message" => "An active invite already exists for this email", "error" => true]);
+                exit;
+            }
+            $checkStmt->close();
+            
+            // Generate unique invite code
+            $invite_code = strtoupper(bin2hex(random_bytes(8)));
+            $expires_at = date('Y-m-d H:i:s', strtotime("+{$expiry_hours} hours"));
+            
+            $sql = "INSERT INTO invite_codes (code, user_type, email, room_code, created_by, expires_at) VALUES (?, 'resident', ?, ?, ?, ?)";
+            $stmt = $conn->prepare($sql);
+            
+            if (!$stmt) {
+                error_log("Prepare failed: " . $conn->error);
+                echo json_encode(["message" => "Database prepare failed: " . $conn->error, "error" => true]);
+                exit;
+            }
+            
+            $stmt->bind_param('sssis', $invite_code, $email, $room_code, $_SESSION['id'], $expires_at);
+            
+            if ($stmt->execute()) {
+                echo json_encode([
+                    "message" => "Invite code created successfully", 
+                    "error" => false,
+                    "invite_code" => $invite_code,
+                    "expires_at" => $expires_at
+                ]);
+            } else {
+                error_log("Execute failed: " . $stmt->error);
+                echo json_encode(["message" => "Failed to create invite code: " . $stmt->error, "error" => true]);
+            }
+            $stmt->close();
+        } elseif ($type === "create_security_invite") {
+            $email = $requestData['email'] ?? '';
+            $expiry_hours = intval($requestData['expiry_hours'] ?? 24);
+            
+            // Ensure user is logged in as admin
+            if (!isset($_SESSION['id']) || $_SESSION['type'] !== 'admin') {
+                echo json_encode(["message" => "Unauthorized", "error" => true]);
+                exit;
+            }
+            
+            // Validation
+            if (empty($email)) {
+                echo json_encode(["message" => "Email is required", "error" => true]);
+                exit;
+            }
+            
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                echo json_encode(["message" => "Invalid email format", "error" => true]);
+                exit;
+            }
+            
+            // Check if email already has an active invite
+            $checkStmt = $conn->prepare("SELECT id FROM invite_codes WHERE email = ? AND user_type = 'security' AND is_used = 0 AND expires_at > NOW()");
+            $checkStmt->bind_param('s', $email);
+            $checkStmt->execute();
+            $existingResult = $checkStmt->get_result();
+            
+            if ($existingResult->num_rows > 0) {
+                echo json_encode(["message" => "An active invite already exists for this email", "error" => true]);
+                exit;
+            }
+            $checkStmt->close();
+            
+            // Generate unique invite code
+            $invite_code = strtoupper(bin2hex(random_bytes(8)));
+            $expires_at = date('Y-m-d H:i:s', strtotime("+{$expiry_hours} hours"));
+            
+            $sql = "INSERT INTO invite_codes (code, user_type, email, created_by, expires_at) VALUES (?, 'security', ?, ?, ?)";
+            $stmt = $conn->prepare($sql);
+            
+            if (!$stmt) {
+                error_log("Prepare failed: " . $conn->error);
+                echo json_encode(["message" => "Database prepare failed: " . $conn->error, "error" => true]);
+                exit;
+            }
+            
+            $stmt->bind_param('ssis', $invite_code, $email, $_SESSION['id'], $expires_at);
+            
+            if ($stmt->execute()) {
+                echo json_encode([
+                    "message" => "Invite code created successfully", 
+                    "error" => false,
+                    "invite_code" => $invite_code,
+                    "expires_at" => $expires_at
+                ]);
+            } else {
+                error_log("Execute failed: " . $stmt->error);
+                echo json_encode(["message" => "Failed to create invite code: " . $stmt->error, "error" => true]);
+            }
+            $stmt->close();
+        } elseif ($type === "register_with_invite") {
+            $invite_code = $requestData['invite_code'] ?? '';
+            $user = $requestData['user'] ?? '';
+            $pass = $requestData['pass'] ?? '';
+            $email = $requestData['email'] ?? '';
+            
+            // Validation
+            if (empty($invite_code) || empty($user) || empty($pass) || empty($email)) {
+                echo json_encode(["message" => "All fields are required", "error" => true]);
+                exit;
+            }
+            
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                echo json_encode(["message" => "Invalid email format", "error" => true]);
+                exit;
+            }
+            
+            // Check if invite code is valid and not expired
+            $checkStmt = $conn->prepare("SELECT * FROM invite_codes WHERE code = ? AND email = ? AND is_used = 0 AND expires_at > NOW()");
+            $checkStmt->bind_param('ss', $invite_code, $email);
+            $checkStmt->execute();
+            $inviteResult = $checkStmt->get_result();
+            
+            if ($inviteResult->num_rows === 0) {
+                echo json_encode(["message" => "Invalid, expired, or already used invite code", "error" => true]);
+                exit;
+            }
+            
+            $invite = $inviteResult->fetch_assoc();
+            $checkStmt->close();
+            
+            // Check if username already exists in the target table
+            $table = $invite['user_type'] === 'resident' ? 'residents' : 'security';
+            $checkUserStmt = $conn->prepare("SELECT id FROM $table WHERE user = ?");
+            $checkUserStmt->bind_param('s', $user);
+            $checkUserStmt->execute();
+            $userResult = $checkUserStmt->get_result();
+            
+            if ($userResult->num_rows > 0) {
+                echo json_encode(["message" => "Username already exists", "error" => true]);
+                exit;
+            }
+            $checkUserStmt->close();
+            
+            $hashedPass = password_hash($pass, PASSWORD_DEFAULT);
+            
+            // Start transaction
+            $conn->begin_transaction();
+            
+            try {
+                // Insert user based on type
+                if ($invite['user_type'] === 'resident') {
+                    $sql = "INSERT INTO residents (user, pass, email, room_code) VALUES (?, ?, ?, ?)";
+                    $stmt = $conn->prepare($sql);
+                    $stmt->bind_param('ssss', $user, $hashedPass, $email, $invite['room_code']);
+                } else {
+                    $sql = "INSERT INTO security (user, pass, email) VALUES (?, ?, ?)";
+                    $stmt = $conn->prepare($sql);
+                    $stmt->bind_param('sss', $user, $hashedPass, $email);
+                }
+                
+                if (!$stmt->execute()) {
+                    throw new Exception("Failed to create user account");
+                }
+                $stmt->close();
+                
+                // Mark invite as used
+                $updateStmt = $conn->prepare("UPDATE invite_codes SET is_used = 1, used_at = NOW() WHERE id = ?");
+                $updateStmt->bind_param('i', $invite['id']);
+                if (!$updateStmt->execute()) {
+                    throw new Exception("Failed to mark invite as used");
+                }
+                $updateStmt->close();
+                
+                $conn->commit();
+                echo json_encode(["message" => "Registration successful", "error" => false]);
+                
+            } catch (Exception $e) {
+                $conn->rollback();
+                echo json_encode(["message" => "Registration failed: " . $e->getMessage(), "error" => true]);
+            }
         } elseif ($type === "register_security") {
             $user = $requestData['user'] ?? '';
             $pass = password_hash($requestData['pass'] ?? '', PASSWORD_DEFAULT);
@@ -515,6 +720,8 @@ switch ($method) {
                 $sql = "DELETE FROM security WHERE id = '$id'";
             } elseif ($fetch === 'announcement') {
                 $sql = "DELETE FROM announcements WHERE id = '$id'";
+            } elseif ($fetch === 'invite_code') {
+                $sql = "DELETE FROM invite_codes WHERE id = '$id'";
             }
             echo json_encode(deleteRow($conn, $sql));
         }
