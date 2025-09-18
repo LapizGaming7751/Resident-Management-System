@@ -38,7 +38,7 @@
     </body>
 
     <script>
-        const API_URL = 'http://localhost/Finals_CheckInSystem%20ai/api.php';
+        const API_URL = 'https://siewyaoying.synergy-college.org/ResidentManagementSystem/api.php';
 
         async function getNotifications() {
             try {

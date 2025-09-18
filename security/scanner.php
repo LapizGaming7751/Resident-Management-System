@@ -83,7 +83,7 @@ if (isset($_SESSION['type']) && $_SESSION['type']=="security"){
 
         <script src="../node_modules/qr-scanner/qr-scanner.umd.min.js"></script>
         <script>
-            const API_URL = 'http://localhost/Finals_CheckInSystem%20ai/api.php';
+            const API_URL = 'https://siewyaoying.synergy-college.org/ResidentManagementSystem/api.php';
             
             const video = document.getElementById('qr-video');
             const tokenInput = document.getElementById('token');

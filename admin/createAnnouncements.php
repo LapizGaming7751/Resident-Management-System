@@ -68,7 +68,7 @@ if (!isset($_SESSION['id'])) {
 </div>
 
 <script>
-const API_URL = 'http://localhost/Finals_CheckInSystem%20ai/api.php';
+const API_URL = 'https://siewyaoying.synergy-college.org/ResidentManagementSystem/api.php';
 
 // Debug information
 console.log('=== CREATE ANNOUNCEMENT DEBUG ===');

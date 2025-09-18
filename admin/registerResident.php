@@ -78,7 +78,11 @@
             })
             .then(data => {
                 if(!data.error){
-                    alert(`Invite code created successfully!\n\nInvite Code: ${data.invite_code}\nEmail: ${email}\nExpires: ${data.expires_at}\n\nPlease share this code with the resident.`);
+                    if (data.email_sent) {
+                        alert(`Invite code created and email sent successfully!\n\nInvite Code: ${data.invite_code}\nEmail: ${email}\nExpires: ${data.expires_at}\n\nAn email has been sent to the resident with registration instructions.`);
+                    } else {
+                        alert(`Invite code created successfully!\n\nInvite Code: ${data.invite_code}\nEmail: ${email}\nExpires: ${data.expires_at}\n\nNote: Email could not be sent. Please share this code manually with the resident.`);
+                    }
                     window.location.href = "manage.php";
                 } else {
                     alert(data.message);

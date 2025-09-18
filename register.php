@@ -60,7 +60,36 @@
     </div>
 
     <script>
-        const API_URL = 'http://localhost/Finals_CheckInSystem%20ai/api.php';
+        const API_URL = 'https://siewyaoying.synergy-college.org/ResidentManagementSystem/api.php';
+
+        // Pre-fill form fields from URL parameters
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const inviteCode = urlParams.get('invite_code');
+            const email = urlParams.get('email');
+            
+            if (inviteCode) {
+                document.getElementById('invite_code').value = inviteCode;
+                // Make the invite code field read-only if it came from URL
+                document.getElementById('invite_code').readOnly = true;
+                document.getElementById('invite_code').style.backgroundColor = '#f8f9fa';
+            }
+            
+            if (email) {
+                document.getElementById('email').value = email;
+                // Make the email field read-only if it came from URL
+                document.getElementById('email').readOnly = true;
+                document.getElementById('email').style.backgroundColor = '#f8f9fa';
+            }
+            
+            // Show a message if fields were pre-filled
+            if (inviteCode || email) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'alert alert-info mb-3';
+                messageDiv.innerHTML = '<i class="bi bi-info-circle"></i> Your invite code and email have been pre-filled from your invitation link.';
+                document.querySelector('.card').insertBefore(messageDiv, document.getElementById('registerForm'));
+            }
+        });
 
         document.getElementById("registerForm").addEventListener("submit", e => {
             e.preventDefault();

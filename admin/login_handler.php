@@ -5,7 +5,7 @@ session_start();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $user = $_POST['user'] ?? '';
     $pass = $_POST['pass'] ?? '';
-    $conn = new mysqli('localhost', 'root', '', 'finals_scanner');
+    $conn = new mysqli('localhost', 'synergy1', 'Hu49xW-b[8lY0R', 'synergy1_siewyaoying_resident_management');
     if ($conn->connect_error) {
         die('Database connection failed');
     }

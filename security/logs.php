@@ -21,7 +21,7 @@ if (!isset($_SESSION['type']) || $_SESSION['type'] !== 'security') {
             <?php $current_page = 'logs'; include 'sidebar.php'; ?>
             <!-- Main Card -->
             <div class="container d-flex justify-content-center align-items-center" style="min-height: calc(100vh - 90px);">
-                <div class="card p-4" style="max-width: 900px; width: 100%;">
+                <div class="card p-4" style="max-width: 1100px; width: 100%;">
                     <h1 class="mb-4 text-center">View Logs</h1>
                     <div class="mb-3 d-flex align-items-center" style="gap:0;">
                         <select id="logField" class="form-select w-auto" style="border-top-right-radius:0; border-bottom-right-radius:0; height:38px; padding-top:6px; padding-bottom:6px;">
@@ -32,6 +32,7 @@ if (!isset($_SESSION['type']) || $_SESSION['type'] !== 'security') {
                             <option value="scan_time">Scan Time</option>
                             <option value="scan_type">Scan Type</option>
                             <option value="scanner_username">Responsible Scanner</option>
+                            <option value="created_by_username">QR Creator</option>
                         </select>
                         <input type="text" id="logSearch" class="form-control" placeholder="Search logs..." style="border-top-left-radius:0; border-bottom-left-radius:0; height:38px;">
                     </div>
@@ -45,6 +46,7 @@ if (!isset($_SESSION['type']) || $_SESSION['type'] !== 'security') {
                                     <th>Scan Time</th>
                                     <th>Scan Type</th>
                                     <th>Responsible Scanner</th>
+                                    <th>QR Creator</th>
                                 </tr>
                             </thead>
                             <tbody id="logEntry">
@@ -56,7 +58,7 @@ if (!isset($_SESSION['type']) || $_SESSION['type'] !== 'security') {
         </div>
 
         <script>
-            const API_URL = 'http://localhost/Finals_CheckInSystem%20ai/api.php';
+            const API_URL = 'https://siewyaoying.synergy-college.org/ResidentManagementSystem/api.php';
             let logsData = [];
 
             function renderLogs(filtered = null) {
@@ -71,6 +73,7 @@ if (!isset($_SESSION['type']) || $_SESSION['type'] !== 'security') {
                         <td> ${log.scan_time} </td>
                         <td> ${log.scan_type} </td>
                         <td> ${log.scanner_username} </td>
+                        <td> ${log.created_by_username || 'N/A'} ${log.created_by_room ? '(' + log.created_by_room + ')' : ''} </td>
                     `;
                     container.appendChild(entry);
                 });

@@ -11,7 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
     
-    $conn = new mysqli('localhost', 'root', '', 'finals_scanner');
+    $conn = new mysqli('localhost', 'synergy1', 'Hu49xW-b[8lY0R', 'synergy1_siewyaoying_resident_management');
     if ($conn->connect_error) {
         error_log('Database connection failed: ' . $conn->connect_error);
         header('Location: index.php?error=db_error');

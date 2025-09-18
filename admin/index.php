@@ -20,7 +20,7 @@
                     </div>
                     <button type="submit" class="btn btn-primary w-100 mb-2">Login</button>
                     <div class="text-center mb-2">
-                        <a href="reset_password.php" class="link-primary mb-2 d-block">Forgot your password?</a>
+                        <a href="../reset_password.php" class="link-primary mb-2 d-block">Forgot your password?</a>
                     </div>
                 </form>
             </div>

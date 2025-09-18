@@ -36,6 +36,11 @@ if (!isset($_SESSION['id'])) {
                         <label for="expiry" class="form-label">Visiting Date</label>
                         <input type="datetime-local" name="expiry" id="expiry" class="form-control" required>
                     </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email Address (Optional)</label>
+                        <input type="email" name="email" id="email" class="form-control" placeholder="Enter email to send QR code">
+                        <div class="form-text">If provided, the QR code will be sent to this email address</div>
+                    </div>
                     <button type="submit" class="btn btn-primary w-100 mb-2">Generate QR</button>
                 </form>
             </div>
@@ -43,7 +48,7 @@ if (!isset($_SESSION['id'])) {
     </body>
 
     <script>
-        const API_URL = 'http://localhost/Finals_CheckInSystem%20ai/api.php';
+        const API_URL = 'https://siewyaoying.synergy-college.org/ResidentManagementSystem/api.php';
 
         document.getElementById("generationForm").addEventListener("submit", e =>{
             e.preventDefault();
@@ -51,11 +56,12 @@ if (!isset($_SESSION['id'])) {
             const name = document.getElementById('guest_name').value;
             const plate = document.getElementById('plate').value;
             const expiry = document.getElementById('expiry').value;
+            const email = document.getElementById('email').value.trim();
 
             fetch(API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 'type':"resident", 'created_by':<?=$_SESSION['id']?>, name, plate, expiry })
+                body: JSON.stringify({ 'type':"resident", 'created_by':<?=$_SESSION['id']?>, name, plate, expiry, email })
             })
             .then(response => {
                 if (!response.ok) {
@@ -65,7 +71,13 @@ if (!isset($_SESSION['id'])) {
             })
             .then(data => {
                 if(!data.error && data.id && data.token){
-                    alert(`QR Created!\nID: ${data.id}\nToken: ${data.token}\nVisitor: ${name}\nCar Plate: ${plate}\nExpiry: ${expiry}`);
+                    let message = `QR Created!\nID: ${data.id}\nToken: ${data.token}\nVisitor: ${name}\nCar Plate: ${plate}\nExpiry: ${expiry}`;
+                    if (data.email_sent) {
+                        message += `\n\nQR code has been sent to: ${email}`;
+                    } else if (email && !data.email_sent) {
+                        message += `\n\nNote: Email could not be sent to ${email}. Please share the QR code manually.`;
+                    }
+                    alert(message);
                 } else {
                     alert(data.message || 'QR creation failed.');
                 }

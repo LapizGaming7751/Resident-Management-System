@@ -57,7 +57,7 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const API_URL = 'http://localhost/Finals_CheckInSystem%20ai/api.php';
+    const API_URL = 'https://siewyaoying.synergy-college.org/ResidentManagementSystem/api.php';
     const searchInput = document.getElementById('announcement-search');
     const container = document.getElementById('announcements');
     const createBtn = document.getElementById('create-announcement');

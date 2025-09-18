@@ -172,6 +172,7 @@
                     <option value="scan_time">Scan Time</option>
                     <option value="scan_type">Scan Type</option>
                     <option value="scanner_username">Responsible Scanner</option>
+                    <option value="created_by_username">QR Creator</option>
                 </select>
                 <input type="text" id="logSearch" class="form-control" placeholder="Search logs..." 
                        style="border-top-left-radius:0; border-bottom-left-radius:0; height:38px;">
@@ -186,6 +187,7 @@
                             <th>Scan Time</th>
                             <th>Scan Type</th>
                             <th>Responsible Scanner</th>
+                            <th>QR Creator</th>
                         </tr>
                     </thead>
                     <tbody id="logEntry"></tbody>
@@ -196,7 +198,7 @@
 </div>
 
 <script>
-const API_URL = 'http://localhost/Finals_CheckInSystem%20ai/api.php';
+const API_URL = 'https://siewyaoying.synergy-college.org/ResidentManagementSystem/api.php';
 
 // ---------- Residents ----------
 let residentsData = [];
@@ -323,7 +325,8 @@ function renderLogs(filtered = null) {
             <td>${log.intended_visitor}</td>
             <td>${log.scan_time}</td>
             <td>${log.scan_type}</td>
-            <td>${log.scanner_username}</td>`;
+            <td>${log.scanner_username}</td>
+            <td>${log.created_by_username || 'N/A'} ${log.created_by_room ? '(' + log.created_by_room + ')' : ''}</td>`;
         container.appendChild(entry);
     });
 }

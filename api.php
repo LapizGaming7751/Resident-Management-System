@@ -5,13 +5,15 @@
 date_default_timezone_set("Singapore");
 include("phpqrcode/qrlib.php");
 
+// Disable error display for API responses to prevent HTML in JSON
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0); // Changed to 0 to prevent HTML errors in JSON response
+ini_set('log_errors', 1); // Log errors instead of displaying them
 
 $host = 'localhost';
-$db = 'finals_scanner';
-$db_user = 'root';
-$db_pass = '';
+$db = 'synergy1_siewyaoying_resident_management';
+$db_user = 'synergy1';
+$db_pass = 'Hu49xW-b[8lY0R';
 
 $conn = new mysqli($host, $db_user, $db_pass, $db);
 if ($conn->connect_error) {
@@ -20,9 +22,21 @@ if ($conn->connect_error) {
     exit;
 }
 
+// Include email functions
+// Include email configuration
+if (file_exists('email_config.php')) {
+    include_once 'email_config.php';
+} else {
+    // Fallback if email_config.php doesn't exist
+    function sendPasswordResetEmail($email, $token, $user_type = 'resident') {
+        error_log("email_config.php not found - using fallback email function");
+        return false;
+    }
+}
+
 session_start();
 header("Content-Type: application/json");
-header("Access-Control-Allow-Origin: " . ($_SERVER['HTTP_ORIGIN'] ?? 'http://localhost'));
+header("Access-Control-Allow-Origin: " . ($_SERVER['HTTP_ORIGIN'] ?? 'https://siewyaoying.synergy-college.org'));
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
 header("Access-Control-Allow-Credentials: true");
@@ -161,7 +175,7 @@ switch ($method) {
                         echo json_encode($list !== false ? $list : []);
                         break;
                     case "log":
-                        $list = fetchList($conn, "SELECT logs.id, logs.token, logs.scan_time, logs.scan_type, logs.scan_by, security.user AS scanner_username, codes.intended_visitor AS intended_visitor FROM logs LEFT JOIN security ON logs.scan_by = security.id LEFT JOIN codes ON logs.token = codes.token");
+                        $list = fetchList($conn, "SELECT logs.id, logs.token, logs.scan_time, logs.scan_type, logs.scan_by, security.user AS scanner_username, codes.intended_visitor AS intended_visitor, residents.user AS created_by_username, residents.room_code AS created_by_room FROM logs LEFT JOIN security ON logs.scan_by = security.id LEFT JOIN codes ON logs.token = codes.token LEFT JOIN residents ON codes.created_by = residents.id");
                         echo json_encode($list !== false ? $list : []);
                         break;
                     case "security":
@@ -275,12 +289,26 @@ switch ($method) {
             $stmt->bind_param('sssis', $invite_code, $email, $room_code, $_SESSION['id'], $expires_at);
             
             if ($stmt->execute()) {
-                echo json_encode([
-                    "message" => "Invite code created successfully", 
-                    "error" => false,
-                    "invite_code" => $invite_code,
-                    "expires_at" => $expires_at
-                ]);
+                // Send invite email
+                $email_sent = sendInviteEmail($email, $invite_code, 'resident', $room_code, $expires_at);
+                
+                if ($email_sent) {
+                    echo json_encode([
+                        "message" => "Invite code created and email sent successfully", 
+                        "error" => false,
+                        "invite_code" => $invite_code,
+                        "expires_at" => $expires_at,
+                        "email_sent" => true
+                    ]);
+                } else {
+                    echo json_encode([
+                        "message" => "Invite code created successfully, but email could not be sent. Please share the code manually.", 
+                        "error" => false,
+                        "invite_code" => $invite_code,
+                        "expires_at" => $expires_at,
+                        "email_sent" => false
+                    ]);
+                }
             } else {
                 error_log("Execute failed: " . $stmt->error);
                 echo json_encode(["message" => "Failed to create invite code: " . $stmt->error, "error" => true]);
@@ -335,17 +363,226 @@ switch ($method) {
             $stmt->bind_param('ssis', $invite_code, $email, $_SESSION['id'], $expires_at);
             
             if ($stmt->execute()) {
-                echo json_encode([
-                    "message" => "Invite code created successfully", 
-                    "error" => false,
-                    "invite_code" => $invite_code,
-                    "expires_at" => $expires_at
-                ]);
+                // Send invite email
+                $email_sent = sendInviteEmail($email, $invite_code, 'security', null, $expires_at);
+                
+                if ($email_sent) {
+                    echo json_encode([
+                        "message" => "Invite code created and email sent successfully", 
+                        "error" => false,
+                        "invite_code" => $invite_code,
+                        "expires_at" => $expires_at,
+                        "email_sent" => true
+                    ]);
+                } else {
+                    echo json_encode([
+                        "message" => "Invite code created successfully, but email could not be sent. Please share the code manually.", 
+                        "error" => false,
+                        "invite_code" => $invite_code,
+                        "expires_at" => $expires_at,
+                        "email_sent" => false
+                    ]);
+                }
             } else {
                 error_log("Execute failed: " . $stmt->error);
                 echo json_encode(["message" => "Failed to create invite code: " . $stmt->error, "error" => true]);
             }
             $stmt->close();
+        } elseif ($type === "request_password_reset") {
+            try {
+                $email = $requestData['email'] ?? '';
+                $user_type = $requestData['user_type'] ?? 'resident';
+            
+            // Validation
+            if (empty($email)) {
+                echo json_encode(["message" => "Email is required", "error" => true]);
+                exit;
+            }
+            
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                echo json_encode(["message" => "Invalid email format", "error" => true]);
+                exit;
+            }
+            
+            if (!in_array($user_type, ['resident', 'security', 'admin'])) {
+                echo json_encode(["message" => "Invalid user type", "error" => true]);
+                exit;
+            }
+            
+            // Check if user exists
+            $table = $user_type === 'admin' ? 'admins' : $user_type . 's';
+            $checkStmt = $conn->prepare("SELECT id FROM $table WHERE email = ?");
+            $checkStmt->bind_param('s', $email);
+            $checkStmt->execute();
+            $userResult = $checkStmt->get_result();
+            
+            if ($userResult->num_rows === 0) {
+                // Don't reveal if email exists or not for security
+                echo json_encode(["message" => "If an account with that email exists, a password reset link has been sent.", "error" => false]);
+                exit;
+            }
+            
+            $user = $userResult->fetch_assoc();
+            $user_id = $user['id'];
+            $checkStmt->close();
+            
+            // Invalidate any existing reset tokens for this user
+            $conn->query("UPDATE password_reset_tokens SET is_used = 1 WHERE user_id = $user_id AND user_type = '$user_type'");
+            
+            // Generate secure reset token
+            $token = bin2hex(random_bytes(32));
+            $expires_at = date('Y-m-d H:i:s', strtotime('+1 hour'));
+            
+            // Insert new reset token
+            $sql = "INSERT INTO password_reset_tokens (token, user_type, user_id, email, expires_at) VALUES (?, ?, ?, ?, ?)";
+            $stmt = $conn->prepare($sql);
+            $stmt->bind_param('ssiss', $token, $user_type, $user_id, $email, $expires_at);
+            
+            if ($stmt->execute()) {
+                // Send password reset email using PHPMailer
+                $email_sent = sendPasswordResetEmail($email, $token, $user_type);
+                
+                if ($email_sent) {
+                    echo json_encode([
+                        "message" => "If an account with that email exists, a password reset link has been sent to your email address.", 
+                        "error" => false
+                    ]);
+                } else {
+                    echo json_encode([
+                        "message" => "Password reset link generated, but there was an issue sending the email. Please contact support.", 
+                        "error" => false
+                    ]);
+                }
+            } else {
+                echo json_encode(["message" => "Failed to generate reset token: " . $conn->error, "error" => true]);
+            }
+            $stmt->close();
+            } catch (Exception $e) {
+                error_log("Password reset error: " . $e->getMessage());
+                echo json_encode(["message" => "An error occurred while processing your request. Please try again.", "error" => true]);
+            }
+        } elseif ($type === "verify_reset_token") {
+            $token = $requestData['token'] ?? '';
+            
+            if (empty($token)) {
+                echo json_encode(["message" => "Token is required", "error" => true]);
+                exit;
+            }
+            
+            // Check if token is valid and not expired
+            $checkStmt = $conn->prepare("SELECT * FROM password_reset_tokens WHERE token = ? AND is_used = 0 AND expires_at > NOW()");
+            $checkStmt->bind_param('s', $token);
+            $checkStmt->execute();
+            $tokenResult = $checkStmt->get_result();
+            
+            if ($tokenResult->num_rows === 0) {
+                echo json_encode(["message" => "Invalid, expired, or already used reset token", "error" => true]);
+                exit;
+            }
+            
+            $resetToken = $tokenResult->fetch_assoc();
+            $checkStmt->close();
+            
+            // Verify the email in the token still matches the account
+            $table = $resetToken['user_type'] === 'admin' ? 'admins' : $resetToken['user_type'] . 's';
+            $verifyStmt = $conn->prepare("SELECT id, email FROM $table WHERE id = ? AND email = ?");
+            $verifyStmt->bind_param('is', $resetToken['user_id'], $resetToken['email']);
+            $verifyStmt->execute();
+            $verifyResult = $verifyStmt->get_result();
+            
+            if ($verifyResult->num_rows === 0) {
+                echo json_encode(["message" => "Account email mismatch. Please request a new password reset.", "error" => true]);
+                exit;
+            }
+            
+            $account = $verifyResult->fetch_assoc();
+            $verifyStmt->close();
+            
+            echo json_encode([
+                "message" => "Token is valid", 
+                "error" => false,
+                "email" => $account['email'],
+                "user_type" => $resetToken['user_type'],
+                "expires_at" => $resetToken['expires_at']
+            ]);
+        } elseif ($type === "reset_password") {
+            $token = $requestData['token'] ?? '';
+            $new_password = $requestData['new_password'] ?? '';
+            $confirm_password = $requestData['confirm_password'] ?? '';
+            
+            // Validation
+            if (empty($token) || empty($new_password) || empty($confirm_password)) {
+                echo json_encode(["message" => "All fields are required", "error" => true]);
+                exit;
+            }
+            
+            if ($new_password !== $confirm_password) {
+                echo json_encode(["message" => "Passwords do not match", "error" => true]);
+                exit;
+            }
+            
+            if (strlen($new_password) < 6) {
+                echo json_encode(["message" => "Password must be at least 6 characters long", "error" => true]);
+                exit;
+            }
+            
+            // Check if token is valid and not expired
+            $checkStmt = $conn->prepare("SELECT * FROM password_reset_tokens WHERE token = ? AND is_used = 0 AND expires_at > NOW()");
+            $checkStmt->bind_param('s', $token);
+            $checkStmt->execute();
+            $tokenResult = $checkStmt->get_result();
+            
+            if ($tokenResult->num_rows === 0) {
+                echo json_encode(["message" => "Invalid, expired, or already used reset token", "error" => true]);
+                exit;
+            }
+            
+            $resetToken = $tokenResult->fetch_assoc();
+            $checkStmt->close();
+            
+            // Additional security: Verify the email in the token still matches the account
+            $table = $resetToken['user_type'] === 'admin' ? 'admins' : $resetToken['user_type'] . 's';
+            $verifyStmt = $conn->prepare("SELECT id, email FROM $table WHERE id = ? AND email = ?");
+            $verifyStmt->bind_param('is', $resetToken['user_id'], $resetToken['email']);
+            $verifyStmt->execute();
+            $verifyResult = $verifyStmt->get_result();
+            
+            if ($verifyResult->num_rows === 0) {
+                echo json_encode(["message" => "Account email mismatch. Please request a new password reset.", "error" => true]);
+                exit;
+            }
+            $verifyStmt->close();
+            
+            $hashedPassword = password_hash($new_password, PASSWORD_DEFAULT);
+            
+            // Start transaction
+            $conn->begin_transaction();
+            
+            try {
+                // Update password
+                $updateStmt = $conn->prepare("UPDATE $table SET pass = ? WHERE id = ?");
+                $updateStmt->bind_param('si', $hashedPassword, $resetToken['user_id']);
+                
+                if (!$updateStmt->execute()) {
+                    throw new Exception("Failed to update password");
+                }
+                $updateStmt->close();
+                
+                // Mark token as used
+                $markUsedStmt = $conn->prepare("UPDATE password_reset_tokens SET is_used = 1, used_at = NOW() WHERE id = ?");
+                $markUsedStmt->bind_param('i', $resetToken['id']);
+                if (!$markUsedStmt->execute()) {
+                    throw new Exception("Failed to mark token as used");
+                }
+                $markUsedStmt->close();
+                
+                $conn->commit();
+                echo json_encode(["message" => "Password reset successfully", "error" => false]);
+                
+            } catch (Exception $e) {
+                $conn->rollback();
+                echo json_encode(["message" => "Password reset failed: " . $e->getMessage(), "error" => true]);
+            }
         } elseif ($type === "register_with_invite") {
             $invite_code = $requestData['invite_code'] ?? '';
             $user = $requestData['user'] ?? '';
@@ -475,6 +712,7 @@ switch ($method) {
             $name = $requestData['name'] ?? '';
             $plate = $requestData['plate'] ?? '';
             $expiry = $requestData['expiry'] ?? '';
+            $email = $requestData['email'] ?? '';
             $token = bin2hex(random_bytes(5));
             $sql = "INSERT INTO codes (token, created_by, expiry, intended_visitor, plate_id) VALUES ('$token','$created_by','$expiry','$name','$plate')";
             
@@ -497,12 +735,35 @@ switch ($method) {
             // Get the inserted ID
             $insert_id = $conn->insert_id;
             
-            echo json_encode([
+            // Send email if provided
+            $email_sent = false;
+            if (!empty($email) && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                // Get resident information for email
+                $resident_query = "SELECT user, room_code FROM residents WHERE id = '$created_by'";
+                $resident_result = $conn->query($resident_query);
+                if ($resident_result && $resident_result->num_rows > 0) {
+                    $resident = $resident_result->fetch_assoc();
+                    $email_sent = sendQREmail($email, $token, $name, $plate, $expiry, $resident['user'], $resident['room_code']);
+                }
+            }
+            
+            $response = [
                 "message" => "QR code created successfully", 
                 "error" => false, 
                 "id" => $insert_id, 
                 "token" => $token
-            ]);
+            ];
+            
+            if (!empty($email)) {
+                $response["email_sent"] = $email_sent;
+                if ($email_sent) {
+                    $response["message"] = "QR code created and email sent successfully";
+                } else {
+                    $response["message"] = "QR code created successfully, but email could not be sent";
+                }
+            }
+            
+            echo json_encode($response);
         } elseif ($type === "guest") {
             $token = $requestData['token'] ?? '';
             $scan_by = $requestData['scan_by'] ?? '';
