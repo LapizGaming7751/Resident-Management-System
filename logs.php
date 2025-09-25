@@ -15,6 +15,7 @@
                     <th>ID</th>
                     <th>Token</th>
                     <th>Intended Visitor</th>
+                    <th>Visitor Car Plate</th>
                     <th>Scan Time</th>
                     <th>Scan Type</th>
                     <th>Responsible Scanner</th>
@@ -45,6 +46,7 @@
                             <td> ${log.id} </td>
                             <td> ${log.token} </td>
                             <td> ${log.intended_visitor} </td>
+                            <td> ${log.plate} </td>
                             <td> ${log.scan_time} </td>
                             <td> ${log.scan_type} </td>
                             <td> ${log.scanner_username} </td>

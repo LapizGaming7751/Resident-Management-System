@@ -13,9 +13,10 @@ if (isset($_SESSION['type']) && $_SESSION['type']=="security"){
         <link rel="stylesheet" href="css.css">
     </head>
     <body>
-        <h1>Visitor Entry</h1>
+        
 
         <form id="scannerForm">
+        <h1>Visitor Entry</h1>
             <video id="qr-video" autoplay style="width: 100%;"></video>
             <input type="text" name="token" id="token" placeholder="QR Code" autocomplete="off">
             <button type="submit">Enter</button>
@@ -29,7 +30,6 @@ if (isset($_SESSION['type']) && $_SESSION['type']=="security"){
             import QrScanner from './node_modules/qr-scanner/qr-scanner.min.js';
             
             const API_URL = 'https://siewyaoying.synergy-college.org/Finals_CheckInSystem/api.php';
-            
             const video = document.getElementById('qr-video');
             const tokenInput = document.getElementById('token');
             const scanner = new QrScanner(video, result => {

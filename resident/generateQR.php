@@ -6,9 +6,9 @@
         <link rel="stylesheet" href="../css.css">
     </head>
     <body>
-        <h1>Generate New Invite</h1>
-
+        
         <form id="generationForm">
+            <h1>Generate New Invite</h1>
             <label for="guest_name">Guest Name: </label>
             <input type="text" name="guest_name" id="guest_name"><br/>
             <label for="plate">Car Plate: </label>

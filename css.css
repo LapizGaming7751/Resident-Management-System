@@ -6,6 +6,10 @@ body {
     background-color: #e0f7ff;
 }
 
+h1{
+    text-align: center;
+}
+
 /* Centered Panel Form */
 form {
     background: white;
