@@ -23,6 +23,7 @@ if (isset($_SESSION['type']) && $_SESSION['type']=="security"){
         </form>
 
         <button onclick="window.location.href='logs.php'">View Logs</button>
+        <button onclick="window.location.href='security_chat.php'">Chat with Residents</button>
         <button onclick="window.location.href='logout.php'">Logout</button>
 
         <script type="module">
@@ -34,7 +35,6 @@ if (isset($_SESSION['type']) && $_SESSION['type']=="security"){
             const scanner = new QrScanner(video, result => {
                 tokenInput.value = result.data;
                 scanner.stop(); // Stop scanning after a successful scan
-                
                 
                 scanCode(tokenInput.value);
             },{

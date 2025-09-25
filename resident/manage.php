@@ -9,8 +9,13 @@
         <h1>Welcome, <?=$_SESSION['user']?></h1>
         
         <button onclick="window.location.href='generateQR.php';">Generate Invite</button>
+        <button onclick="window.location.href='chat.php';">Chat with Security</button>
         <button onclick="window.location.href='logout.php';">Logout</button>
         
+        <h2>Notifications</h2>
+        <div id="notifications">
+        </div>
+
         <h2>Manage Invites</h2>
         <div id="qr">
 
@@ -22,15 +27,55 @@
     <script>
         const API_URL = 'https://siewyaoying.synergy-college.org/Finals_CheckInSystem/api.php';
 
-        function getQR(){
-            fetch(`${API_URL}?type=resident&created_by=<?=$_SESSION['id']?>`)
-            .then(response => {
+        async function getNotifications() {
+            try {
+                const response = await fetch(`${API_URL}?type=resident&created_by=<?=$_SESSION['id']?>&fetch=notifications`);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
-                return response.json();
-            })
-            .then(data => {
+                const data = await response.json();
+                
+                const container = document.getElementById('notifications');
+                container.innerHTML = '';
+                data.forEach(notification => {
+                    const div = document.createElement('div');
+                    div.innerHTML = `
+                        <p>${notification.message} (${notification.created_at})</p>
+                        <button class="read-button" onclick="readNotification(${notification.id})">Read</button>
+                    `;
+                    container.appendChild(div);
+                });
+            } catch (error) {
+                console.error('Error fetching notifications:', error);
+            }
+        }
+
+        async function readNotification(id) {
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ "type":"resident", id })
+                });
+                if (!response.ok) {
+                    throw new Error('Failed to read notification');
+                }
+                const data = await response.json();
+                alert(data.message);
+                getNotifications();
+            } catch (error) {
+                console.error('Error reading notification:', error);
+            }
+        }
+
+        async function getQR() {
+            try {
+                const response = await fetch(`${API_URL}?type=resident&created_by=<?=$_SESSION['id']?>`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                
                 const container = document.getElementById('qr');
                 container.innerHTML = '';
                 data.forEach(qr => {
@@ -44,36 +89,34 @@
                     `;
                     container.appendChild(div);
                 });
-            })
-            .catch(error => {
+            } catch (error) {
                 console.error('Error fetching QRs:', error);
-            });
+            }
         }
 
-        function revokeInvite(id){
-            if(confirm("Sure to revoke this invite?")){
-
-                fetch(API_URL, {
-                    method: 'DELETE',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ "type":"resident", id })
-                })
-                .then(response => {
+        async function revokeInvite(id) {
+            if(confirm("Sure to revoke this invite?")) {
+                try {
+                    const response = await fetch(API_URL, {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ "type":"resident", id })
+                    });
                     if (!response.ok) {
                         throw new Error('Failed to delete QR');
                     }
-                    return response.json();
-                })
-                .then(data => {
+                    const data = await response.json();
                     alert(data.message);
                     getQR();
-                })
-                .catch(error => {
+                } catch (error) {
                     console.error('Error deleting QR:', error);
-                });
+                }
             }
         }
 
         getQR();
+        getNotifications();
+        // Refresh notifications every second
+        setInterval(getNotifications, 1000);
     </script>
 </html>
