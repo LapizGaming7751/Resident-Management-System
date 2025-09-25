@@ -47,10 +47,10 @@
         </div>
     </div>
 
-    <div class="w-100 px-5 py-5" style="background: rgba(35, 35, 91, 0.2); box-shadow: 0 4px 24px rgba(24, 24, 74, 0.24);">
+    <div class="w-100 px-3 px-md-5 py-5" style="background: rgba(35, 35, 91, 0.2); box-shadow: 0 4px 24px rgba(24, 24, 74, 0.24);">
         <div class="container">
             <h2 class="fw-bold mb-4 text-center" style="font-size:2rem;"><span style="font-size:1.5rem;">✨</span> Key Features</h2>
-            <div class="row justify-content-center">
+            <div class="row justify-content-center g-3 g-md-4">
                 <div class="col-md-4 mb-4">
                     <div class="card h-100 shadow-sm feature-card bg-white bg-opacity-25">
                         <div class="card-body">
@@ -112,11 +112,11 @@
     </div>
 
     <div class="container">
-        <div class="row text-center mt-4 mb-2">
-            <div class="col-3"><span class="fw-bold" style="font-size:1.5rem;">100%</span><br>Secure</div>
-            <div class="col-3"><span class="fw-bold" style="font-size:1.5rem;">24/7</span><br>Monitoring</div>
-            <div class="col-3"><span class="fw-bold" style="font-size:1.5rem;">Fast</span><br>Access</div>
-            <div class="col-3"><span class="fw-bold" style="font-size:1.5rem;">Easy</span><br>Setup</div>
+        <div class="row text-center mt-4 mb-2 g-2">
+            <div class="col-6 col-md-3"><span class="fw-bold" style="font-size:1.5rem;">100%</span><br><small>Secure</small></div>
+            <div class="col-6 col-md-3"><span class="fw-bold" style="font-size:1.5rem;">24/7</span><br><small>Monitoring</small></div>
+            <div class="col-6 col-md-3"><span class="fw-bold" style="font-size:1.5rem;">Fast</span><br><small>Access</small></div>
+            <div class="col-6 col-md-3"><span class="fw-bold" style="font-size:1.5rem;">Easy</span><br><small>Setup</small></div>
         </div>
     </div>
 

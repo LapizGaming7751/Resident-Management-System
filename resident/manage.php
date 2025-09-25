@@ -1,18 +1,26 @@
 <?php session_start(); ?>
-
-<html>
-    <head>
-        <link rel="icon" type="image/x-icon" href="../ico/house-icon.ico">
-        <title>Manage Visitors</title>
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-        <link rel="stylesheet" href="../css.css">
-    </head>
-    <body>
-        <?php include('../topbar.php'); ?>
-        <div class="main-content" style="margin-left: 250px; min-height: calc(100vh - 70px); padding-top: 20px;">
-            <!-- Sidebar -->
-            <?php $current_page = 'manage'; include 'sidebar.php'; ?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="../ico/house-icon.ico">
+    <title>Manage Visitors</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="../css.css">
+</head>
+<body>
+    <?php include('../topbar.php'); ?>
+    
+    <!-- Mobile Sidebar Toggle Button -->
+    <button class="sidebar-toggle d-md-none" onclick="toggleSidebar()">
+        <i class="bi bi-list"></i>
+    </button>
+    
+    <div class="main-content" style="margin-left: 250px; min-height: calc(100vh - 70px); padding-top: 20px;">
+        <!-- Sidebar -->
+        <?php $current_page = 'manage'; include 'sidebar.php'; ?>
             <!-- Main Card -->
             <div class="container-fluid" style="padding: 20px;">
                 <div class="row">
@@ -113,10 +121,18 @@
                                     <div class="qr-field"><strong>Expires:</strong> ${qr.expiry}</div>
                                     <div class="qr-field"><strong>Visitor:</strong> ${qr.intended_visitor || 'N/A'}</div>
                                     <div class="qr-field"><strong>Car Plate:</strong> ${qr.plate_id || 'N/A'}</div>
+                                    <div class="qr-field"><strong>Exit Status:</strong> 
+                                        <span class="badge ${qr.is_blocked == 1 ? 'bg-danger' : 'bg-success'}">
+                                            ${qr.is_blocked == 1 ? 'Exit Blocked' : 'Normal'}
+                                        </span>
+                                    </div>
                                 </div>
                                 <div class="qr-actions">
                                     <button onclick="revokeInvite(${qr.id})" class="btn btn-danger btn-sm">Delete</button>
-                                    <button onclick="window.location.href='editQR.php?id=${qr.id}&token=${qr.token}&plate=${qr.plate_id}&visitor=${qr.intended_visitor}&date=${qr.expiry}'" class="btn btn-outline-primary btn-sm">Edit QR</button>
+                                    <button onclick="window.location.href='editQR.php?id=${qr.id}&token=${qr.token}&plate=${qr.plate_id}&visitor=${qr.intended_visitor}&date=${qr.expiry}&is_blocked=${qr.is_blocked}'" class="btn btn-outline-primary btn-sm">Edit QR</button>
+                                    <button onclick="toggleExitBlock(${qr.id}, ${qr.is_blocked})" class="btn ${qr.is_blocked == 1 ? 'btn-warning' : 'btn-outline-warning'} btn-sm">
+                                        ${qr.is_blocked == 1 ? 'Unblock Exit' : 'Block Exit'}
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -148,9 +164,39 @@
             }
         }
 
+        async function toggleExitBlock(id, currentStatus) {
+            const newStatus = currentStatus == 1 ? 0 : 1;
+            const action = newStatus == 1 ? 'block' : 'unblock';
+            
+            if(confirm(`Are you sure you want to ${action} exit for this QR code?`)) {
+                try {
+                    const response = await fetch(API_URL, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            "type": "toggle_exit_block", 
+                            id, 
+                            is_blocked: newStatus 
+                        })
+                    });
+                    if (!response.ok) {
+                        throw new Error('Failed to update exit block status');
+                    }
+                    const data = await response.json();
+                    alert(data.message);
+                    getQR();
+                } catch (error) {
+                    console.error('Error updating exit block status:', error);
+                }
+            }
+        }
+
         getQR();
         getNotifications();
         // Refresh notifications every second
         setInterval(getNotifications, 1000);
     </script>
+    
+    <!-- Mobile JavaScript -->
+    <script src="../js/mobile.js"></script>
 </html>

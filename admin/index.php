@@ -1,10 +1,13 @@
-<html>
-    <head>
-        <link rel="icon" type="image/x-icon" href="../ico/house-icon.ico">
-        <title>Admin Login</title>
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="../ico/house-icon.ico">
+    <title>Admin Login</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../css.css">
-    </head>
+</head>
     <body>
         <div class="container min-vh-100 d-flex justify-content-center align-items-center">
             <div class="card p-4 d-flex flex-column align-items-center" style="max-width: 400px; width: 100%;">

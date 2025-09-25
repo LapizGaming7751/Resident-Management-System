@@ -36,6 +36,14 @@
                         <label for="expiry" class="form-label">Visiting Date</label>
                         <input type="datetime-local" name="expiry" id="expiry" class="form-control" value="<?=$_GET['date']?>" required>
                     </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="is_blocked" id="is_blocked" value="1" <?=isset($_GET['is_blocked']) && $_GET['is_blocked'] == 1 ? 'checked' : ''?>>
+                            <label class="form-check-label" for="is_blocked">
+                                Block Exit (Visitor can enter but cannot exit until unblocked)
+                            </label>
+                        </div>
+                    </div>
                     <button type="submit" class="btn btn-primary w-100 mb-2">Edit QR</button>
                 </form>
             </div>
@@ -52,11 +60,12 @@
             const name = document.getElementById('guest_name').value;
             const plate = document.getElementById('plate').value;
             const expiry = document.getElementById('expiry').value;
+            const is_blocked = document.getElementById('is_blocked').checked ? 1 : 0;
 
             fetch(API_URL, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 'type':"resident", id, 'created_by':<?=$_SESSION['id']?>, name, plate, expiry })
+                body: JSON.stringify({ 'type':"resident", id, 'created_by':<?=$_SESSION['id']?>, name, plate, expiry, is_blocked })
             })
             .then(response => {
                 if (!response.ok) {

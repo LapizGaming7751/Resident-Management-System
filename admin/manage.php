@@ -1,6 +1,9 @@
 <?php session_start(); ?>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/x-icon" href="../ico/house-icon.ico">
     <title>Admin Management</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -9,6 +12,11 @@
 </head>
 <body>
 <?php include('../topbar.php'); ?>
+
+<!-- Mobile Sidebar Toggle Button -->
+<button class="sidebar-toggle d-md-none" onclick="toggleSidebar()">
+    <i class="bi bi-list"></i>
+</button>
 
 <div class="main-content" style="margin-left: 250px; min-height: calc(100vh - 70px); padding-top: 20px;">
     <?php $current_page = 'logs'; include('sidebar.php'); ?>
@@ -73,6 +81,54 @@
         </div>
     </div>
     <?php endif; ?>
+</div>
+
+<!-- Blacklist Management Panel -->
+<div class="container mt-4">
+    <div class="card p-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="mb-0">Blocked Car Plates</h1>
+            <div>
+                <button class="btn btn-danger" onclick="showAddBlacklistModal()">+ Block Car Plate</button>
+            </div>
+        </div>
+        
+        <div class="mb-3 d-flex align-items-center" style="gap:0;">
+            <input type="text" id="blacklistSearch" class="form-control" placeholder="Search blocked car plates...">
+        </div>
+        
+        <div class="card-body" id="blacklist" style="max-height:400px; overflow-y:auto;">
+            <p class="text-muted">Loading blocked car plates...</p>
+        </div>
+    </div>
+</div>
+
+<!-- Add Blacklist Modal -->
+<div class="modal fade" id="addBlacklistModal" tabindex="-1" aria-labelledby="addBlacklistModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addBlacklistModalLabel">Block Car Plate</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addBlacklistForm">
+                    <div class="mb-3">
+                        <label for="blacklistPlate" class="form-label">Car Plate Number</label>
+                        <input type="text" class="form-control" id="blacklistPlate" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="blacklistReason" class="form-label">Reason for Blocking</label>
+                        <textarea class="form-control" id="blacklistReason" rows="3" placeholder="Enter reason for blocking this car plate..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" onclick="addBlacklist()">Block Car Plate</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Invite Codes Panel (full width, underneath) -->
@@ -459,6 +515,101 @@ function filterInviteCodes(){
     renderInviteCodes(filtered);
 }
 
+// ---------- Blacklist Functions ----------
+let blacklistData = [];
+function renderBlacklist(filtered = null) {
+    const container = document.getElementById('blacklist');
+    container.innerHTML = '';
+    (filtered || blacklistData).forEach(item => {
+        const div = document.createElement('div');
+        div.className = "d-flex justify-content-between align-items-center border-bottom py-2";
+        const reasonText = item.reason ? ` | Reason: ${item.reason}` : '';
+        div.innerHTML = `
+            <div>
+                <div><strong>ID: ${item.id} | ${item.blacklisted_car_plate} | Added: ${new Date(item.created_at).toLocaleDateString()}</strong></div>
+                ${reasonText ? `<div class="text-muted small">${reasonText}</div>` : ''}
+            </div>
+            <span>
+                <button class="btn btn-sm btn-outline-danger" onclick="deleteBlacklist(${item.id})">Remove</button>
+            </span>
+        `;
+        container.appendChild(div);
+    });
+}
+
+function getBlacklist(){
+    fetch(`${API_URL}?type=admin&fetch=blacklist`)
+        .then(r=>r.json())
+        .then(data=>{ blacklistData = data; renderBlacklist(); });
+}
+
+function showAddBlacklistModal() {
+    const modal = new bootstrap.Modal(document.getElementById('addBlacklistModal'));
+    modal.show();
+}
+
+function addBlacklist() {
+    console.log('addBlacklist function called'); // Debug log
+    const plate = document.getElementById('blacklistPlate').value.trim();
+    const reason = document.getElementById('blacklistReason').value.trim();
+    console.log('Plate value:', plate); // Debug log
+    console.log('Reason value:', reason); // Debug log
+    
+    if (!plate) {
+        alert('Please enter a car plate number');
+        return;
+    }
+    
+    console.log('Sending request to:', API_URL); // Debug log
+    
+    fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'admin', fetch: 'blacklist', plate: plate, reason: reason })
+    })
+    .then(r => {
+        console.log('Response status:', r.status); // Debug log
+        return r.json();
+    })
+    .then(data => {
+        console.log('Response data:', data); // Debug log
+        alert(data.message);
+        if (!data.error) {
+            document.getElementById('blacklistPlate').value = '';
+            document.getElementById('blacklistReason').value = '';
+            bootstrap.Modal.getInstance(document.getElementById('addBlacklistModal')).hide();
+            getBlacklist();
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error); // Debug log
+        alert('Error: ' + error.message);
+    });
+}
+
+function deleteBlacklist(id) {
+    if (confirm("Remove this car plate from blacklist?")) {
+        fetch(API_URL, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'admin', fetch: 'blacklist', id: id })
+        })
+        .then(r=>r.json())
+        .then(d=>{
+            alert(d.message);
+            getBlacklist();
+        });
+    }
+}
+
+// Blacklist search functionality
+document.getElementById('blacklistSearch').addEventListener('input', e=>{
+    const q = e.target.value.toLowerCase();
+    renderBlacklist(blacklistData.filter(item => 
+        Object.values(item).some(v=>String(v).toLowerCase().includes(q))
+    ));
+});
+
 // ---------- Delete Functions ----------
 function deleteResident(id){ if(confirm("Delete this resident?")){ fetch(API_URL,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'admin',fetch:'resident',id})}).then(r=>r.json()).then(d=>{alert(d.message);getResidents();});}}
 function deleteSecurity(id){ if(confirm("Delete this security staff?")){ fetch(API_URL,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'admin',fetch:'security',id})}).then(r=>r.json()).then(d=>{alert(d.message);getSecurity();});}}
@@ -470,7 +621,13 @@ getResidents();
 getSecurity();
 getLogs();
 getInviteCodes();
+getBlacklist();
 <?php if ($_SESSION['access_level'] >= 2): ?>getAdmins();<?php endif; ?>
 </script>
+
+<!-- Bootstrap JavaScript -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Mobile JavaScript -->
+<script src="../js/mobile.js"></script>
 </body>
 </html>

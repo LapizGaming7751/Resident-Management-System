@@ -93,7 +93,8 @@ CREATE TABLE `codes` (
   `created_by` int(255) NOT NULL,
   `expiry` datetime(3) NOT NULL,
   `intended_visitor` varchar(255) NOT NULL,
-  `plate_id` varchar(255) NOT NULL
+  `plate_id` varchar(255) NOT NULL,
+  `is_blocked` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -265,6 +266,19 @@ INSERT INTO `residents` (`id`, `user`, `pass`, `room_code`, `is_active`, `email`
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `blacklist`
+--
+
+CREATE TABLE `blacklist` (
+  `id` int(255) NOT NULL,
+  `blacklisted_car_plate` varchar(255) NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `created_by` int(255) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `security`
 --
 
@@ -361,6 +375,14 @@ ALTER TABLE `residents`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Indexes for table `blacklist`
+--
+ALTER TABLE `blacklist`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `blacklisted_car_plate` (`blacklisted_car_plate`),
+  ADD KEY `created_by` (`created_by`);
+
+--
 -- Indexes for table `security`
 --
 ALTER TABLE `security`
@@ -431,6 +453,12 @@ ALTER TABLE `residents`
   MODIFY `id` int(255) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
+-- AUTO_INCREMENT for table `blacklist`
+--
+ALTER TABLE `blacklist`
+  MODIFY `id` int(255) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `security`
 --
 ALTER TABLE `security`
@@ -458,6 +486,12 @@ ALTER TABLE `codes`
 --
 ALTER TABLE `invite_codes`
   ADD CONSTRAINT `invite_codes_ibfk_1` FOREIGN KEY (`created_by`) REFERENCES `admins` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `blacklist`
+--
+ALTER TABLE `blacklist`
+  ADD CONSTRAINT `blacklist_ibfk_1` FOREIGN KEY (`created_by`) REFERENCES `admins` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints for table `notifications`

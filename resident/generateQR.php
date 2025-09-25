@@ -41,6 +41,14 @@ if (!isset($_SESSION['id'])) {
                         <input type="email" name="email" id="email" class="form-control" placeholder="Enter email to send QR code">
                         <div class="form-text">If provided, the QR code will be sent to this email address</div>
                     </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="is_blocked" id="is_blocked" value="1">
+                            <label class="form-check-label" for="is_blocked">
+                                Block Exit (Visitor can enter but cannot exit until unblocked)
+                            </label>
+                        </div>
+                    </div>
                     <button type="submit" class="btn btn-primary w-100 mb-2">Generate QR</button>
                 </form>
             </div>
@@ -57,11 +65,12 @@ if (!isset($_SESSION['id'])) {
             const plate = document.getElementById('plate').value;
             const expiry = document.getElementById('expiry').value;
             const email = document.getElementById('email').value.trim();
+            const is_blocked = document.getElementById('is_blocked').checked ? 1 : 0;
 
             fetch(API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 'type':"resident", 'created_by':<?=$_SESSION['id']?>, name, plate, expiry, email })
+                body: JSON.stringify({ 'type':"resident", 'created_by':<?=$_SESSION['id']?>, name, plate, expiry, email, is_blocked })
             })
             .then(response => {
                 if (!response.ok) {

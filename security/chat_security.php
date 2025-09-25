@@ -18,6 +18,12 @@ if (!isset($_SESSION['type']) || $_SESSION['type'] !== 'security') {
 </head>
 <body>
     <?php include('../topbar.php'); ?>
+    
+    <!-- Mobile Sidebar Toggle Button -->
+    <button class="sidebar-toggle d-md-none" onclick="toggleSidebar()">
+        <i class="bi bi-list"></i>
+    </button>
+    
     <div class="main-content" style="margin-left: 250px; min-height: calc(100vh - 70px); padding-top: 20px;">
         <!-- Sidebar -->
         <?php $current_page = 'chat'; include 'sidebar.php'; ?>
@@ -172,5 +178,8 @@ if (!isset($_SESSION['type']) || $_SESSION['type'] !== 'security') {
             filterResidents(e.target.value);
         });
     </script>
+    
+    <!-- Mobile JavaScript -->
+    <script src="../js/mobile.js"></script>
 </body>
 </html> 

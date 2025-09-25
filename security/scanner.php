@@ -5,12 +5,15 @@ if (isset($_SESSION['type']) && $_SESSION['type']=="security"){
 
 ?>
 
-<html>
-    <head>
-        <link rel="icon" type="image/x-icon" href="../ico/house-icon.ico">
-        <title>Scan Here</title>
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="../ico/house-icon.ico">
+    <title>Scan Here</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="../css.css">
     <style>
         .user-item {
@@ -42,6 +45,11 @@ if (isset($_SESSION['type']) && $_SESSION['type']=="security"){
     </head>
     <body>
         <?php include('../topbar.php'); ?>
+
+        <!-- Mobile Sidebar Toggle Button -->
+        <button class="sidebar-toggle d-md-none" onclick="toggleSidebar()">
+            <i class="bi bi-list"></i>
+        </button>
 
         <div class="main-content" style="margin-left: 250px; min-height: calc(100vh - 70px); padding-top: 20px;">
             <!-- Sidebar -->
@@ -144,7 +152,15 @@ if (isset($_SESSION['type']) && $_SESSION['type']=="security"){
                     try {
                         const data = JSON.parse(text);
                         console.log("API JSON:", data);
-                        alert(data.message);
+                        
+                        // Handle different response types
+                        if (data.error) {
+                            // Show error message with red styling
+                            alert(`❌ ${data.message}`);
+                        } else {
+                            // Show success message with green styling
+                            alert(`✅ ${data.message}`);
+                        }
                     } catch (err) {
                         console.error("Raw API response (not JSON):", text);
                         alert("Server error – check PHP logs. Raw response is in console.");
@@ -190,6 +206,9 @@ if (isset($_SESSION['type']) && $_SESSION['type']=="security"){
                 scanCode(document.getElementById('token').value);
             });
         </script>
+        
+        <!-- Mobile JavaScript -->
+        <script src="../js/mobile.js"></script>
     </body>
 </html>
 

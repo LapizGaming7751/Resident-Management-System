@@ -190,6 +190,14 @@ switch ($method) {
                         $list = fetchList($conn, "SELECT ic.*, a.user as created_by_name FROM invite_codes ic LEFT JOIN admins a ON ic.created_by = a.id ORDER BY ic.created_at DESC");
                         echo json_encode($list !== false ? $list : []);
                         break;
+                    case "blacklist":
+                        try {
+                            $list = fetchList($conn, "SELECT b.*, a.user as created_by_name FROM blacklist b LEFT JOIN admins a ON b.created_by = a.id ORDER BY b.created_at DESC");
+                            echo json_encode($list !== false ? $list : []);
+                        } catch (Exception $e) {
+                            echo json_encode(["error" => true, "message" => "Database error: " . $e->getMessage()]);
+                        }
+                        break;
                     default:
                         errorResponse("Fetch not recognized");
                 }
@@ -231,6 +239,54 @@ switch ($method) {
             }
             $sql = "DELETE FROM announcements WHERE id = '$id'";
             echo json_encode(deleteRow($conn, $sql));
+            exit;
+        }
+        
+        // Handle blacklist addition
+        if ($type === "admin" && isset($requestData['fetch']) && $requestData['fetch'] === 'blacklist') {
+            $plate = $requestData['plate'] ?? '';
+            $reason = $requestData['reason'] ?? '';
+            
+            if (empty($plate)) {
+                echo json_encode(["message" => "Car plate number is required", "error" => true]);
+                exit;
+            }
+            
+            try {
+                // Check if plate is already blacklisted
+                $checkStmt = $conn->prepare("SELECT id FROM blacklist WHERE blacklisted_car_plate = ?");
+                if (!$checkStmt) {
+                    echo json_encode(["message" => "Database error: " . $conn->error, "error" => true]);
+                    exit;
+                }
+                
+                $checkStmt->bind_param('s', $plate);
+                $checkStmt->execute();
+                $existingResult = $checkStmt->get_result();
+                
+                if ($existingResult->num_rows > 0) {
+                    echo json_encode(["message" => "Car plate is already blacklisted", "error" => true]);
+                    exit;
+                }
+                
+                // Add to blacklist with reason
+                $adminId = $_SESSION['id'] ?? 1; // Default to admin ID 1 if session not set
+                $insertStmt = $conn->prepare("INSERT INTO blacklist (blacklisted_car_plate, created_by, reason) VALUES (?, ?, ?)");
+                if (!$insertStmt) {
+                    echo json_encode(["message" => "Database error: " . $conn->error, "error" => true]);
+                    exit;
+                }
+                
+                $insertStmt->bind_param('sis', $plate, $adminId, $reason);
+                
+                if ($insertStmt->execute()) {
+                    echo json_encode(["message" => "Car plate added to blacklist successfully", "error" => false]);
+                } else {
+                    echo json_encode(["message" => "Failed to add car plate to blacklist: " . $insertStmt->error, "error" => true]);
+                }
+            } catch (Exception $e) {
+                echo json_encode(["message" => "Error: " . $e->getMessage(), "error" => true]);
+            }
             exit;
         }
         
@@ -713,8 +769,21 @@ switch ($method) {
             $plate = $requestData['plate'] ?? '';
             $expiry = $requestData['expiry'] ?? '';
             $email = $requestData['email'] ?? '';
+            
+            // Check if car plate is blacklisted
+            $blacklistCheck = $conn->prepare("SELECT id FROM blacklist WHERE blacklisted_car_plate = ?");
+            $blacklistCheck->bind_param('s', $plate);
+            $blacklistCheck->execute();
+            $blacklistResult = $blacklistCheck->get_result();
+            
+            if ($blacklistResult->num_rows > 0) {
+                echo json_encode(["message" => "Cannot create QR code: Car plate '$plate' is blacklisted", "error" => true]);
+                exit;
+            }
+            
             $token = bin2hex(random_bytes(5));
-            $sql = "INSERT INTO codes (token, created_by, expiry, intended_visitor, plate_id) VALUES ('$token','$created_by','$expiry','$name','$plate')";
+            $is_blocked = $requestData['is_blocked'] ?? 0;
+            $sql = "INSERT INTO codes (token, created_by, expiry, intended_visitor, plate_id, is_blocked) VALUES ('$token','$created_by','$expiry','$name','$plate', '$is_blocked')";
             
             // Insert into database first
             $result = $conn->query($sql);
@@ -790,6 +859,20 @@ switch ($method) {
                     $lastLog = $logCheck->fetch_assoc();
 
                     if ($lastLog['scan_type'] === 'In') {
+                        // Check if QR code is exit-blocked
+                        if ($row['is_blocked'] == 1) {
+                            echo json_encode([
+                                "message" => "Exit denied: This QR code is exit-blocked. Please contact the resident to unblock it.",
+                                "error" => true,
+                                "visitor" => $row['intended_visitor'],
+                                "plate" => $row['plate_id'],
+                                "resident" => $row['resident_name'],
+                                "room" => $row['room_code'],
+                                "status" => "Exit Blocked"
+                            ]);
+                            exit;
+                        }
+                        
                         // If last was 'In', this scan should be 'Out' → expire the code
                         $log_sql = "INSERT INTO logs (token, scan_type, scan_by) 
                                     VALUES ('$token', 'Out', '$scan_by')";
@@ -883,7 +966,8 @@ switch ($method) {
                 $name = $requestData['name'] ?? '';
                 $plate = $requestData['plate'] ?? '';
                 $expiry = $requestData['expiry'] ?? '';
-                $sql = "UPDATE codes SET expiry='$expiry', intended_visitor='$name', plate_id='$plate' WHERE id = '$id'";
+                $is_blocked = $requestData['is_blocked'] ?? 0;
+                $sql = "UPDATE codes SET expiry='$expiry', intended_visitor='$name', plate_id='$plate', is_blocked='$is_blocked' WHERE id = '$id'";
                 
                 $result = $conn->query($sql);
                 if (!$result) {
@@ -910,6 +994,11 @@ switch ($method) {
                 
                 echo json_encode(["message" => "Update successful", "error" => false]);
             }
+        } elseif ($type === "toggle_exit_block") {
+            $id = $requestData['id'] ?? '';
+            $is_blocked = $requestData['is_blocked'] ?? 0;
+            $sql = "UPDATE codes SET is_blocked = '$is_blocked' WHERE id = '$id'";
+            echo json_encode(updateRow($conn, $sql));
         } elseif ($type === "update_resident") {
             if (isset($requestData['id']) && !isset($requestData['pass'])) {
                 $id = $requestData['id'];
@@ -983,6 +1072,8 @@ switch ($method) {
                 $sql = "DELETE FROM announcements WHERE id = '$id'";
             } elseif ($fetch === 'invite_code') {
                 $sql = "DELETE FROM invite_codes WHERE id = '$id'";
+            } elseif ($fetch === 'blacklist') {
+                $sql = "DELETE FROM blacklist WHERE id = '$id'";
             }
             echo json_encode(deleteRow($conn, $sql));
         }
