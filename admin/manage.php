@@ -1,4 +1,17 @@
-<?php session_start(); ?>
+<?php
+// Include secure configuration
+require_once '../config.php';
+
+configureSecureSession();
+
+if (!isset($_SESSION['id']) || $_SESSION['type'] !== 'admin') {
+    echo '<div style="color:red;text-align:center;margin-top:2em;">Error: Admin session not found. Please log in again.</div>';
+    exit;
+}
+
+// Generate CSRF token for admin management
+$csrf_token = generateCSRFToken();
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -13,22 +26,18 @@
 <body>
 <?php include('../topbar.php'); ?>
 
-<!-- Mobile Sidebar Toggle Button -->
-<button class="sidebar-toggle d-md-none" onclick="toggleSidebar()">
-    <i class="bi bi-list"></i>
-</button>
-
-<div class="main-content" style="margin-left: 250px; min-height: calc(100vh - 70px); padding-top: 20px;">
+<div class="main-content">
     <?php $current_page = 'logs'; include('sidebar.php'); ?>
 
     <!-- Row for Residents, Security, Admins -->
-    <div class="row g-4 px-4"> <!-- px-4 matches inner spacing with logs -->
+    <div class="container-fluid p-4">
+        <div class="row g-4">
     <!-- Residents -->
     <div class="col-lg-4">
         <div class="card shadow-sm h-100">
-            <div class="card-header d-flex justify-content-between align-items-center">
+            <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
                 <h5 class="mb-0">Residents</h5>
-                <button class="btn btn-sm btn-primary flex-shrink-0" style="min-width:150px;"
+                <button class="btn btn-sm btn-primary w-100 w-md-auto"
                         onclick="window.location.href='registerResident.php'">
                     + Create Invite
                 </button>
@@ -45,9 +54,9 @@
     <!-- Security -->
     <div class="col-lg-4">
         <div class="card shadow-sm h-100">
-            <div class="card-header d-flex justify-content-between align-items-center">
+            <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
                 <h5 class="mb-0">Security</h5>
-                <button class="btn btn-sm btn-primary flex-shrink-0" style="min-width:150px;"
+                <button class="btn btn-sm btn-primary w-100 w-md-auto"
                         onclick="window.location.href='registerSecurity.php'">
                     + Create Invite
                 </button>
@@ -65,9 +74,9 @@
     <?php if ($_SESSION['access_level'] >= 2): ?>
     <div class="col-lg-4">
         <div class="card shadow-sm h-100">
-            <div class="card-header d-flex justify-content-between align-items-center">
+            <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
                 <h5 class="mb-0">Admins</h5>
-                <button class="btn btn-sm btn-primary flex-shrink-0" style="min-width:150px;"
+                <button class="btn btn-sm btn-primary w-100 w-md-auto"
                         onclick="window.location.href='registerAdmin.php'">
                     + Register Admin
                 </button>
@@ -81,19 +90,18 @@
         </div>
     </div>
     <?php endif; ?>
-</div>
+        </div>
+    </div>
 
 <!-- Blacklist Management Panel -->
-<div class="container mt-4">
+<div class="container-fluid px-4">
     <div class="card p-4">
-        <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-2">
             <h1 class="mb-0">Blocked Car Plates</h1>
-            <div>
-                <button class="btn btn-danger" onclick="showAddBlacklistModal()">+ Block Car Plate</button>
-            </div>
+            <button class="btn btn-danger w-100 w-md-auto" onclick="showAddBlacklistModal()">+ Block Car Plate</button>
         </div>
         
-        <div class="mb-3 d-flex align-items-center" style="gap:0;">
+        <div class="mb-3">
             <input type="text" id="blacklistSearch" class="form-control" placeholder="Search blocked car plates...">
         </div>
         
@@ -132,66 +140,68 @@
 </div>
 
 <!-- Invite Codes Panel (full width, underneath) -->
-<div class="container mt-4">
+<div class="container-fluid px-4 mt-4">
     <div class="card p-4">
-        <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-2">
             <h1 class="mb-0">Invite Codes</h1>
-            <div>
+            <div class="d-flex flex-column flex-md-row gap-2 w-100 w-md-auto">
                 <button class="btn btn-primary" onclick="window.location.href='registerResident.php'">Create Resident Invite</button>
                 <button class="btn btn-primary" onclick="window.location.href='registerSecurity.php'">Create Security Invite</button>
             </div>
         </div>
         
         <!-- Invite Statistics -->
-        <div class="row mb-4" id="inviteStats">
-            <div class="col-md-3">
+        <div class="row g-3 mb-4" id="inviteStats">
+            <div class="col-6 col-md-3">
                 <div class="card bg-warning text-white">
-                    <div class="card-body text-center">
-                        <h5 class="card-title">Pending</h5>
-                        <h3 id="pendingCount">-</h3>
+                    <div class="card-body text-center p-3">
+                        <h6 class="card-title mb-2">Pending</h6>
+                        <h4 id="pendingCount" class="mb-0">-</h4>
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-6 col-md-3">
                 <div class="card bg-success text-white">
-                    <div class="card-body text-center">
-                        <h5 class="card-title">Accepted</h5>
-                        <h3 id="acceptedCount">-</h3>
+                    <div class="card-body text-center p-3">
+                        <h6 class="card-title mb-2">Accepted</h6>
+                        <h4 id="acceptedCount" class="mb-0">-</h4>
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-6 col-md-3">
                 <div class="card bg-danger text-white">
-                    <div class="card-body text-center">
-                        <h5 class="card-title">Expired</h5>
-                        <h3 id="expiredCount">-</h3>
+                    <div class="card-body text-center p-3">
+                        <h6 class="card-title mb-2">Expired</h6>
+                        <h4 id="expiredCount" class="mb-0">-</h4>
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-6 col-md-3">
                 <div class="card bg-info text-white">
-                    <div class="card-body text-center">
-                        <h5 class="card-title">Total</h5>
-                        <h3 id="totalCount">-</h3>
+                    <div class="card-body text-center p-3">
+                        <h6 class="card-title mb-2">Total</h6>
+                        <h4 id="totalCount" class="mb-0">-</h4>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="mb-3 d-flex align-items-center" style="gap:0;">
-            <select id="inviteField" class="form-select w-auto" 
-                    style="border-top-right-radius:0; border-bottom-right-radius:0; height:38px; padding-top:6px; padding-bottom:6px;">
-                <option value="all">All Fields</option>
-                <option value="code">Invite Code</option>
-                <option value="user_type">User Type</option>
-                <option value="email">Email</option>
-                <option value="room_code">Room Code</option>
-                <option value="created_by_name">Created By</option>
-                <option value="created_at">Created At</option>
-                <option value="expires_at">Expires At</option>
-                <option value="is_used">Status</option>
-            </select>
-            <input type="text" id="inviteSearch" class="form-control" placeholder="Search invite codes..." 
-                   style="border-top-left-radius:0; border-bottom-left-radius:0; height:38px;">
+        <div class="row g-2 mb-3">
+            <div class="col-md-3">
+                <select id="inviteField" class="form-select">
+                    <option value="all">All Fields</option>
+                    <option value="code">Invite Code</option>
+                    <option value="user_type">User Type</option>
+                    <option value="email">Email</option>
+                    <option value="room_code">Room Code</option>
+                    <option value="created_by_name">Created By</option>
+                    <option value="created_at">Created At</option>
+                    <option value="expires_at">Expires At</option>
+                    <option value="is_used">Status</option>
+                </select>
+            </div>
+            <div class="col-md-9">
+                <input type="text" id="inviteSearch" class="form-control" placeholder="Search invite codes...">
+            </div>
         </div>
         <div class="table-responsive">
             <table class="table table-bordered table-striped">
@@ -215,23 +225,25 @@
 </div>
 
     <!-- Logs Panel (full width, underneath) -->
-    <div class="container mt-4">
+    <div class="container-fluid px-4 mt-4">
         <div class="card p-4">
             <h1 class="mb-4 text-center">Visitor Logs</h1>
-            <div class="mb-3 d-flex align-items-center" style="gap:0;">
-                <select id="logField" class="form-select w-auto" 
-                        style="border-top-right-radius:0; border-bottom-right-radius:0; height:38px; padding-top:6px; padding-bottom:6px;">
-                    <option value="all">All Fields</option>
-                    <option value="id">ID</option>
-                    <option value="token">Token</option>
-                    <option value="intended_visitor">Intended Visitor</option>
-                    <option value="scan_time">Scan Time</option>
-                    <option value="scan_type">Scan Type</option>
-                    <option value="scanner_username">Responsible Scanner</option>
-                    <option value="created_by_username">QR Creator</option>
-                </select>
-                <input type="text" id="logSearch" class="form-control" placeholder="Search logs..." 
-                       style="border-top-left-radius:0; border-bottom-left-radius:0; height:38px;">
+            <div class="row g-2 mb-3">
+                <div class="col-md-3">
+                    <select id="logField" class="form-select">
+                        <option value="all">All Fields</option>
+                        <option value="id">ID</option>
+                        <option value="token">Token</option>
+                        <option value="intended_visitor">Intended Visitor</option>
+                        <option value="scan_time">Scan Time</option>
+                        <option value="scan_type">Scan Type</option>
+                        <option value="scanner_username">Responsible Scanner</option>
+                        <option value="created_by_username">QR Creator</option>
+                    </select>
+                </div>
+                <div class="col-md-9">
+                    <input type="text" id="logSearch" class="form-control" placeholder="Search logs...">
+                </div>
             </div>
             <div class="table-responsive">
                 <table class="table table-bordered table-striped">
@@ -254,7 +266,9 @@
 </div>
 
 <script>
-const API_URL = 'https://siewyaoying.synergy-college.org/ResidentManagementSystem/api.php';
+// Use relative URL to avoid hardcoded URLs
+const API_URL = '../api.php';
+const CSRF_TOKEN = '<?= $csrf_token ?>';
 
 // ---------- Residents ----------
 let residentsData = [];
@@ -565,7 +579,13 @@ function addBlacklist() {
     fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'admin', fetch: 'blacklist', plate: plate, reason: reason })
+        body: JSON.stringify({ 
+            type: 'admin', 
+            fetch: 'blacklist', 
+            plate: plate, 
+            reason: reason,
+            csrf_token: CSRF_TOKEN
+        })
     })
     .then(r => {
         console.log('Response status:', r.status); // Debug log
@@ -592,7 +612,12 @@ function deleteBlacklist(id) {
         fetch(API_URL, {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type: 'admin', fetch: 'blacklist', id: id })
+            body: JSON.stringify({ 
+                type: 'admin', 
+                fetch: 'blacklist', 
+                id: id,
+                csrf_token: CSRF_TOKEN
+            })
         })
         .then(r=>r.json())
         .then(d=>{
@@ -611,10 +636,10 @@ document.getElementById('blacklistSearch').addEventListener('input', e=>{
 });
 
 // ---------- Delete Functions ----------
-function deleteResident(id){ if(confirm("Delete this resident?")){ fetch(API_URL,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'admin',fetch:'resident',id})}).then(r=>r.json()).then(d=>{alert(d.message);getResidents();});}}
-function deleteSecurity(id){ if(confirm("Delete this security staff?")){ fetch(API_URL,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'admin',fetch:'security',id})}).then(r=>r.json()).then(d=>{alert(d.message);getSecurity();});}}
-function deleteAdmin(id){ if(confirm("Delete this admin?")){ fetch(API_URL,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'admin',fetch:'admin',id})}).then(r=>r.json()).then(d=>{alert(d.message);getAdmins();});}}
-function deleteInviteCode(id){ if(confirm("Delete this invite code?")){ fetch(API_URL,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'admin',fetch:'invite_code',id})}).then(r=>r.json()).then(d=>{alert(d.message);getInviteCodes();});}}
+function deleteResident(id){ if(confirm("Delete this resident?")){ fetch(API_URL,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'admin',fetch:'resident',id,csrf_token:CSRF_TOKEN})}).then(r=>r.json()).then(d=>{alert(d.message);getResidents();});}}
+function deleteSecurity(id){ if(confirm("Delete this security staff?")){ fetch(API_URL,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'admin',fetch:'security',id,csrf_token:CSRF_TOKEN})}).then(r=>r.json()).then(d=>{alert(d.message);getSecurity();});}}
+function deleteAdmin(id){ if(confirm("Delete this admin?")){ fetch(API_URL,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'admin',fetch:'admin',id,csrf_token:CSRF_TOKEN})}).then(r=>r.json()).then(d=>{alert(d.message);getAdmins();});}}
+function deleteInviteCode(id){ if(confirm("Delete this invite code?")){ fetch(API_URL,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'admin',fetch:'invite_code',id,csrf_token:CSRF_TOKEN})}).then(r=>r.json()).then(d=>{alert(d.message);getInviteCodes();});}}
 
 // ---------- Init ----------
 getResidents();

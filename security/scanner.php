@@ -1,6 +1,12 @@
 <?php
-session_start();
+// Include secure configuration
+require_once '../config.php';
+
+configureSecureSession();
 if (isset($_SESSION['type']) && $_SESSION['type']=="security"){
+    
+    // Generate CSRF token for scanning
+    $csrf_token = generateCSRFToken();
     
 
 ?>
@@ -46,22 +52,17 @@ if (isset($_SESSION['type']) && $_SESSION['type']=="security"){
     <body>
         <?php include('../topbar.php'); ?>
 
-        <!-- Mobile Sidebar Toggle Button -->
-        <button class="sidebar-toggle d-md-none" onclick="toggleSidebar()">
-            <i class="bi bi-list"></i>
-        </button>
-
-        <div class="main-content" style="margin-left: 250px; min-height: calc(100vh - 70px); padding-top: 20px;">
+        <div class="main-content">
             <!-- Sidebar -->
             <?php $current_page = 'scanner'; include 'sidebar.php'; ?>
             <!-- Main Card -->
-            <div class="container d-flex justify-content-center align-items-center" style="min-height: calc(100vh - 90px);">
+            <div class="container d-flex justify-content-center align-items-center min-vh-100">
                 <div class="card p-4 d-flex flex-column align-items-center" style="max-width: 700px; width: 100%;">
                     <h1 class="mb-4 text-center">Visitor Entry</h1>
                     <form id="scannerForm">
                         <div class="mb-3 d-flex justify-content-center">
                             <div class="position-relative">
-                                <video id="qr-video" autoplay muted playsinline style="width: 600px; height: 350px; max-width: 100%; border-radius: 0.5rem; object-fit: cover; background-color: #f8f9fa;"></video>
+                                <video id="qr-video" autoplay muted playsinline class="w-100" style="height: 350px; max-width: 600px; border-radius: 0.5rem; object-fit: cover; background-color: #f8f9fa;"></video>
                                 <div id="scanner-overlay" class="position-absolute top-50 start-50 translate-middle text-center" style="display: none;">
                                     <div class="spinner-border text-primary" role="status">
                                         <span class="visually-hidden">Loading...</span>
@@ -91,12 +92,19 @@ if (isset($_SESSION['type']) && $_SESSION['type']=="security"){
 
         <script src="../node_modules/qr-scanner/qr-scanner.umd.min.js"></script>
         <script>
-            const API_URL = 'https://siewyaoying.synergy-college.org/ResidentManagementSystem/api.php';
+            // Use relative URL to avoid hardcoded URLs
+            const API_URL = '../api.php';
+            const CSRF_TOKEN = '<?= $csrf_token ?>';
             
             const video = document.getElementById('qr-video');
             const tokenInput = document.getElementById('token');
-            const scan_by = <?= isset($_SESSION['id']) ? intval($_SESSION['id']) : 0 ?>;
+            const scan_by = <?= (isset($_SESSION['id']) && $_SESSION['id'] > 0) ? intval($_SESSION['id']) : 'null' ?>;
             let scanner = null;
+            
+            // Debug session information
+            console.log('Session ID:', <?= isset($_SESSION['id']) ? $_SESSION['id'] : 'null' ?>);
+            console.log('Session Type:', <?= isset($_SESSION['type']) ? "'" . $_SESSION['type'] . "'" : 'null' ?>);
+            console.log('Scan By:', scan_by);
             
             // Initialize QR Scanner
             function initScanner() {
@@ -142,10 +150,21 @@ if (isset($_SESSION['type']) && $_SESSION['type']=="security"){
             function scanCode(token){
                 const type = "guest";
 
+                // Validate scan_by before sending request
+                if (!scan_by || scan_by === null || scan_by <= 0) {
+                    alert('❌ Error: Security session not found. Please log in again.');
+                    return;
+                }
+
                 fetch(API_URL, {
                     method: 'POST',
                     headers: {'Content-type':'application/json'},
-                    body: JSON.stringify({ type, token, scan_by })
+                    body: JSON.stringify({ 
+                        type: type, 
+                        token: token, 
+                        scan_by: scan_by,
+                        csrf_token: CSRF_TOKEN
+                    })
                 })
                 .then(response => response.text())   // always get raw text
                 .then(text => {
@@ -163,12 +182,13 @@ if (isset($_SESSION['type']) && $_SESSION['type']=="security"){
                         }
                     } catch (err) {
                         console.error("Raw API response (not JSON):", text);
-                        alert("Server error – check PHP logs. Raw response is in console.");
+                        console.error("JSON Parse Error:", err);
+                        alert("❌ Server error: Invalid response format. Check console for details.");
                     }
                 })
                 .catch(error => {
                     console.error('Network/fetch error:', error);
-                    alert('Error processing QR code. Please try again.');
+                    alert('❌ Network error: ' + error.message + '. Please check your connection and try again.');
                 })
                 .finally(() => {
                     if (scanner) {

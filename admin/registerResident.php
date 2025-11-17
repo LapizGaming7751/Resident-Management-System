@@ -1,16 +1,20 @@
-<html>
-    <head>
-        <link rel="icon" type="image/x-icon" href="../ico/house-icon.ico">
-        <title>Register new Resident</title>
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-        <link rel="stylesheet" href="../css.css">
-    </head>
-    <body>
-        <?php include('../topbar.php'); ?>
-        <div class="container mt-3 d-flex justify-content-center align-items-center">
-            <div class="card p-4 d-flex flex-column align-items-center" style="max-width: 400px; width: 100%;">
-                <?php $current_page = 'add_resident'; include 'sidebar.php'; ?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="../ico/house-icon.ico">
+    <title>Register new Resident</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="../css.css">
+</head>
+<body>
+    <?php include('../topbar.php'); ?>
+    
+    <div class="container mt-3 d-flex justify-content-center align-items-center">
+        <div class="card p-4 d-flex flex-column align-items-center" style="max-width: 400px; width: 100%;">
+            <?php $current_page = 'add_resident'; include 'sidebar.php'; ?>
                 <h2>Create Resident Invite</h2>
                 <form id="registerForm">
                     <div class="mb-3">
@@ -44,6 +48,23 @@
     <script>
         const API_URL = '../api.php';
 
+        // Get CSRF token on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch(API_URL + '?type=get_csrf_token', {
+                method: 'GET',
+                credentials: 'same-origin'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.csrf_token) {
+                    window.csrfToken = data.csrf_token;
+                }
+            })
+            .catch(error => {
+                console.error('Error getting CSRF token:', error);
+            });
+        });
+
         document.getElementById("registerForm").addEventListener("submit", e =>{
             e.preventDefault();
 
@@ -66,7 +87,13 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'same-origin',
-                body: JSON.stringify({ type, email, room_code, expiry_hours })
+                body: JSON.stringify({ 
+                    type, 
+                    email, 
+                    room_code, 
+                    expiry_hours, 
+                    csrf_token: window.csrfToken || '' 
+                })
             })
             .then(response => {
                 console.log('Response status:', response.status);
@@ -94,4 +121,7 @@
             });
         });
     </script>
+    
+    <!-- Mobile JavaScript -->
+    <script src="../js/mobile.js"></script>
 </html>

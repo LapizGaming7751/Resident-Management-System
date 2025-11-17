@@ -1,9 +1,16 @@
 <?php
-session_start();
+// Include secure configuration
+require_once '../config.php';
+
+configureSecureSession();
+
 if (!isset($_SESSION['type']) || $_SESSION['type'] !== 'resident') {
-    header('Location: index.php');
+    echo '<div style="color:red;text-align:center;margin-top:2em;">Error: Resident session not found. Please log in again.</div>';
     exit;
 }
+
+// Generate CSRF token for chat
+$csrf_token = generateCSRFToken();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -19,16 +26,11 @@ if (!isset($_SESSION['type']) || $_SESSION['type'] !== 'resident') {
 <body>
     <?php include('../topbar.php'); ?>
     
-    <!-- Mobile Sidebar Toggle Button -->
-    <button class="sidebar-toggle d-md-none" onclick="toggleSidebar()">
-        <i class="bi bi-list"></i>
-    </button>
-    
-    <div class="main-content" style="margin-left: 250px; min-height: calc(100vh - 70px); padding-top: 20px;">
+    <div class="main-content">
         <!-- Sidebar -->
         <?php $current_page = 'chat'; include 'sidebar.php'; ?>
         <!-- Main Card -->
-        <div class="container d-flex justify-content-center align-items-center" style="min-height: calc(100vh - 90px);">
+        <div class="container d-flex justify-content-center align-items-center min-vh-100">
             <div class="card p-4 w-100" style="max-width: 900px;">
                 <div class="row">
                     <div class="col-md-4 mb-3 mb-md-0">
@@ -156,7 +158,8 @@ if (!isset($_SESSION['type']) || $_SESSION['type'] !== 'resident') {
                     sender_type: 'resident',
                     receiver_id: currentSecurityId,
                     receiver_type: 'security',
-                    message: message
+                    message: message,
+                    csrf_token: '<?= $csrf_token ?>'
                 })
             })
             .then(response => response.json())

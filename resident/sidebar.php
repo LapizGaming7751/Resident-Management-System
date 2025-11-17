@@ -4,16 +4,22 @@
 // Usage: include 'sidebar.php' and set $current_page variable to highlight current page
 $current_page = $current_page ?? '';
 ?>
-<!-- Sidebar Toggle Button -->
-<button class="btn btn-primary position-fixed" id="sidebarToggle" style="top: 80px; left: 260px; z-index: 1050; width: 40px; height: 40px; padding: 0; display: flex; align-items: center; justify-content: center; transition: left 0.3s ease; border-radius: 50%; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
-    <i class="bi bi-list" id="toggleIcon" style="font-size: 1.2rem; color: white;"></i>
-</button>
+
 
 <!-- Sidebar -->
-<div id="sidebar" class="d-flex flex-column bg-white position-fixed" style="width: 250px; height: calc(100vh - 70px); top: 70px; left: 0; border-radius:0; box-shadow: 2px 0 8px rgba(0,0,0,0.1); justify-content:space-between; z-index: 1040; transition: width 0.3s ease, transform 0.3s ease;">
+<div id="sidebar" class="d-flex flex-column bg-white position-fixed" style="width: 250px; height: calc(100vh - 70px); top: 70px; left: 0; z-index: var(--z-sidebar); transition: width 0.3s ease, transform 0.3s ease;">
+    <!-- Docker Button -->
+    <button class="docker-btn undocked" id="dockerBtn" aria-label="Toggle sidebar dock">
+        <i class="fas fa-chevron-right"></i>
+    </button>
     <div class="p-3">
+    <script src="../js/docker.js"></script>
+        
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h4 class="mb-0 text-center flex-grow-1 sidebar-text">Welcome,<br><?=$_SESSION['user']?></h4>
+            <h4 class="mb-0 text-center flex-grow-1 sidebar-text">
+                <span class="d-none d-md-inline">Welcome,<br><?=$_SESSION['user']?></span>
+                <span class="d-md-none">Welcome</span>
+            </h4>
         </div>
         <hr class="my-3 sidebar-divider">
         <button onclick="window.location.href='announcements.php';" class="btn <?= $current_page === 'announcements' ? 'btn-primary' : 'btn-outline-primary' ?> w-100 mb-2 sidebar-button" <?= $current_page === 'announcements' ? 'disabled' : '' ?>>
@@ -39,156 +45,108 @@ $current_page = $current_page ?? '';
 document.addEventListener('DOMContentLoaded', function() {
     const sidebar = document.getElementById('sidebar');
     const sidebarToggle = document.getElementById('sidebarToggle');
+    const mobileToggle = document.getElementById('mobileSidebarToggle');
     const toggleIcon = document.getElementById('toggleIcon');
     const closeSidebar = document.getElementById('closeSidebar');
     const mainContent = document.querySelector('.main-content');
     const sidebarTexts = document.querySelectorAll('.sidebar-text');
     const sidebarButtons = document.querySelectorAll('.sidebar-button');
     
+    const MOBILE_BP = 768;
     let isCollapsed = false;
-    
-    // Toggle sidebar collapse/expand
-    function toggleSidebar() {
-        isCollapsed = !isCollapsed;
-        
+
+    function isMobile() { return window.innerWidth < MOBILE_BP; }
+
+    function openMobileSidebar() {
+        if (!sidebar) return;
+        sidebar.classList.add('mobile-open');
+        sidebar.classList.remove('mobile-closed');
+        sidebar.style.transform = 'translateX(0)';
+        if (closeSidebar) closeSidebar.style.display = 'inline-flex';
+    }
+
+    function closeMobileSidebar() {
+        if (!sidebar) return;
+        sidebar.classList.remove('mobile-open');
+        sidebar.classList.add('mobile-closed');
+        sidebar.style.transform = 'translateX(-100%)';
+        if (closeSidebar) closeSidebar.style.display = 'none';
+    }
+
+    function setDesktopCollapsed(collapsed) {
+        if (!sidebar) return;
+        isCollapsed = !!collapsed;
         if (isCollapsed) {
-            // Collapse sidebar
-            sidebar.style.width = '70px';
-            sidebar.style.transform = 'translateX(0)';
-            if (mainContent) {
-                mainContent.style.marginLeft = '70px';
-            }
-            toggleIcon.className = 'bi bi-chevron-right';
-            
-            // Hide text elements
-            sidebarTexts.forEach(text => {
-                text.style.display = 'none';
-            });
-            
-            // Hide divider
-            const divider = document.querySelector('.sidebar-divider');
-            if (divider) {
-                divider.style.display = 'none';
-            }
-            
-            // Center buttons
-            sidebarButtons.forEach(button => {
-                button.style.justifyContent = 'center';
-                button.style.padding = '8px';
-            });
-            
-            // Move toggle button to collapsed position
-            sidebarToggle.style.left = '80px';
+            sidebar.classList.add('collapsed');
+            sidebar.classList.remove('expanded');
+            if (mainContent) mainContent.classList.add('collapsed');
         } else {
-            // Expand sidebar
-            sidebar.style.width = '250px';
-            sidebar.style.transform = 'translateX(0)';
+            sidebar.classList.remove('collapsed');
+            sidebar.classList.add('expanded');
             if (mainContent) {
-                mainContent.style.marginLeft = '250px';
-            }
-            toggleIcon.className = 'bi bi-chevron-left';
-            
-            // Show text elements
-            sidebarTexts.forEach(text => {
-                text.style.display = 'inline';
-            });
-            
-            // Show divider
-            const divider = document.querySelector('.sidebar-divider');
-            if (divider) {
-                divider.style.display = 'block';
-            }
-            
-            // Reset button styling
-            sidebarButtons.forEach(button => {
-                button.style.justifyContent = 'flex-start';
-                button.style.padding = '';
-            });
-            
-            // Move toggle button to expanded position
-            sidebarToggle.style.left = '260px';
-        }
-    }
-    
-    // Handle mobile behavior
-    function handleMobileResize() {
-        if (window.innerWidth < 768) {
-            // Mobile: slide in/out behavior
-            sidebar.style.width = '250px';
-            sidebar.style.transform = 'translateX(-100%)';
-            if (mainContent) {
-                mainContent.style.marginLeft = '0';
-            }
-            toggleIcon.className = 'bi bi-list';
-            
-            // Show text elements on mobile
-            sidebarTexts.forEach(text => {
-                text.style.display = 'inline';
-            });
-            
-            // Reset button styling
-            sidebarButtons.forEach(button => {
-                button.style.justifyContent = 'flex-start';
-                button.style.padding = '';
-            });
-        } else {
-            // Desktop: collapse/expand behavior
-            if (!isCollapsed) {
-                sidebar.style.width = '250px';
-                sidebar.style.transform = 'translateX(0)';
-                if (mainContent) {
-                    mainContent.style.marginLeft = '250px';
-                }
-                toggleIcon.className = 'bi bi-chevron-left';
-            } else {
-                sidebar.style.width = '70px';
-                sidebar.style.transform = 'translateX(0)';
-                if (mainContent) {
-                    mainContent.style.marginLeft = '70px';
-                }
-                toggleIcon.className = 'bi bi-chevron-right';
+                mainContent.classList.remove('collapsed');
+                mainContent.classList.add('expanded');
             }
         }
     }
-    
-    // Toggle sidebar
-    sidebarToggle.addEventListener('click', function() {
-        if (window.innerWidth < 768) {
-            // Mobile: slide in/out
-            if (sidebar.style.transform === 'translateX(-100%)') {
-                sidebar.style.transform = 'translateX(0)';
+
+    function toggleDesktopCollapse() {
+        setDesktopCollapsed(!isCollapsed);
+        toggleIcon.className = isCollapsed ? 'bi bi-chevron-right' : 'bi bi-chevron-left';
+    }
+
+    function handleResize() {
+        if (isMobile()) {
+            // mobile: close overlay by default
+            closeMobileSidebar();
+            setDesktopCollapsed(false);
+        } else {
+            // desktop: ensure sidebar visible and apply collapsed state
+            sidebar.classList.remove('mobile-open', 'mobile-closed');
+            sidebar.style.transform = 'translateX(0)';
+            setDesktopCollapsed(isCollapsed);
+            if (closeSidebar) closeSidebar.style.display = 'none';
+        }
+    }
+
+    // Event bindings
+    if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', function(e) {
+            if (isMobile()) {
+                openMobileSidebar();
             } else {
-                sidebar.style.transform = 'translateX(-100%)';
+                toggleDesktopCollapse();
             }
-        } else {
-            // Desktop: collapse/expand
-            toggleSidebar();
-        }
-    });
-    
-    // Close sidebar on mobile
-    closeSidebar.addEventListener('click', function() {
-        if (window.innerWidth < 768) {
-            sidebar.style.transform = 'translateX(-100%)';
-        } else {
-            toggleSidebar();
-        }
-    });
-    
-    // Close sidebar when clicking outside on mobile
+        });
+    }
+
+    if (mobileToggle) {
+        mobileToggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (sidebar.classList.contains('mobile-open')) closeMobileSidebar();
+            else openMobileSidebar();
+        });
+    }
+
+    if (closeSidebar) {
+        closeSidebar.addEventListener('click', function(e) {
+            e.stopPropagation();
+            closeMobileSidebar();
+        });
+    }
+
     document.addEventListener('click', function(e) {
-        if (window.innerWidth < 768 && 
-            !sidebar.contains(e.target) && 
-            !sidebarToggle.contains(e.target) &&
-            sidebar.style.transform === 'translateX(0)') {
-            sidebar.style.transform = 'translateX(-100%)';
+        if (isMobile() && sidebar && sidebar.classList.contains('mobile-open')) {
+            const clickedOutside = !sidebar.contains(e.target) && !(mobileToggle && mobileToggle.contains(e.target));
+            if (clickedOutside) closeMobileSidebar();
         }
     });
-    
-    // Handle window resize
-    window.addEventListener('resize', handleMobileResize);
-    
+
+    window.addEventListener('resize', handleResize);
+
     // Initialize
-    handleMobileResize();
+    handleResize();
+
 });
+
 </script>

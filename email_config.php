@@ -1,6 +1,9 @@
 <?php
 // Email configuration for password reset functionality using PHPMailer
 
+// Include secure configuration
+require_once 'config.php';
+
 // Include PHPMailer via Composer autoloader
 require_once 'vendor/autoload.php';
 
@@ -8,16 +11,8 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\SMTP;
 use PHPMailer\PHPMailer\Exception;
 
-// Email configuration constants
-define('SMTP_HOST', 'smtp.gmail.com');
-define('SMTP_PORT', 587);
-define('SMTP_USERNAME', 'lapizgaming7751@gmail.com');
-define('SMTP_PASSWORD', 'fzhlqlnbqlxoyhvm'); // Change this to your Gmail App Password
-define('FROM_EMAIL', 'lapizgaming7751@gmail.com');
-define('FROM_NAME', 'Check-In System');
-
 function sendPasswordResetEmail($email, $token, $user_type = 'resident') {
-    $reset_link = "https://siewyaoying.synergy-college.org/ResidentManagementSystem/reset_password_confirm.php?token=" . urlencode($token);
+    $reset_link = APP_URL . "/reset_password_confirm.php?token=" . urlencode($token);
     $user_type_display = ucfirst($user_type);
     
     $subject = "Password Reset Request - Check-In System";
@@ -114,7 +109,7 @@ function sendPasswordResetEmail($email, $token, $user_type = 'resident') {
 }
 
 function sendInviteEmail($email, $invite_code, $user_type = 'resident', $room_code = null, $expires_at = null) {
-    $register_link = "https://siewyaoying.synergy-college.org/ResidentManagementSystem/register.php?invite_code=" . urlencode($invite_code) . "&email=" . urlencode($email);
+    $register_link = APP_URL . "/register.php?invite_code=" . urlencode($invite_code) . "&email=" . urlencode($email);
     $user_type_display = ucfirst($user_type);
     $expires_display = $expires_at ? date('F j, Y \a\t g:i A', strtotime($expires_at)) : '24 hours';
     
@@ -233,7 +228,7 @@ function sendInviteEmail($email, $invite_code, $user_type = 'resident', $room_co
 }
 
 function sendQREmail($email, $token, $visitor_name, $plate_id, $expiry_date, $resident_name, $room_code) {
-    $qr_image_url = "https://siewyaoying.synergy-college.org/ResidentManagementSystem/qr/" . $token . ".png";
+    $qr_image_url = APP_URL . "/qr/" . $token . ".png";
     $expires_display = date('F j, Y \a\t g:i A', strtotime($expiry_date));
     
     $subject = "Your QR Code for Visiting - Check-In System";

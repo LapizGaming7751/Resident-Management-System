@@ -91,6 +91,21 @@
                 messageDiv.innerHTML = '<i class="bi bi-info-circle"></i> Your invite code and email have been pre-filled from your invitation link.';
                 document.querySelector('.card').insertBefore(messageDiv, document.getElementById('registerForm'));
             }
+            
+            // Get CSRF token
+            fetch(API_URL + '?type=get_csrf_token', {
+                method: 'GET',
+                credentials: 'same-origin'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.csrf_token) {
+                    window.csrfToken = data.csrf_token;
+                }
+            })
+            .catch(error => {
+                console.error('Error getting CSRF token:', error);
+            });
         });
 
         document.getElementById("registerForm").addEventListener("submit", e => {
@@ -117,7 +132,15 @@
             fetch(API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ type, invite_code, email, user, pass })
+                credentials: 'same-origin',
+                body: JSON.stringify({ 
+                    type, 
+                    invite_code, 
+                    email, 
+                    user, 
+                    pass, 
+                    csrf_token: window.csrfToken || '' 
+                })
             })
             .then(response => {
                 if (!response.ok) {

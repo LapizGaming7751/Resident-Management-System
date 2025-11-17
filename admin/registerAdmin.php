@@ -38,7 +38,24 @@
     </body>
 
     <script>
-        const API_URL = 'https://siewyaoying.synergy-college.org/ResidentManagementSystem/api.php';
+        const API_URL = '../api.php';
+
+        // Get CSRF token on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch(API_URL + '?type=get_csrf_token', {
+                method: 'GET',
+                credentials: 'same-origin'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.csrf_token) {
+                    window.csrfToken = data.csrf_token;
+                }
+            })
+            .catch(error => {
+                console.error('Error getting CSRF token:', error);
+            });
+        });
 
         document.getElementById("registerForm").addEventListener("submit", e =>{
             e.preventDefault();
@@ -51,7 +68,14 @@
             fetch(API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ type, user, pass, access_level })
+                credentials: 'same-origin',
+                body: JSON.stringify({ 
+                    type, 
+                    user, 
+                    pass, 
+                    access_level, 
+                    csrf_token: window.csrfToken || '' 
+                })
             })
             .then(response => {
                 if (!response.ok) {

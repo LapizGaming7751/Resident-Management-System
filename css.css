@@ -1,11 +1,19 @@
 /*ModernLightBlueTheme*/
 :root{
---primary-color:#007bff;
---secondary-color:#e0f7ff;
---text-color:#333;
---card-shadow:04px6pxrgba(0,0,0,0.1);
---transition:all0.3sease;
+    --primary-color: #007bff;
+    --secondary-color: #e0f7ff;
+    --text-color: #333;
+    --card-shadow: 0 4px 6px rgba(0,0,0,0.08);
+    --transition: all 0.3s ease;
+    /* Central z-index scale (sensible defaults) */
+    --z-dropdown: 1000;
+    --z-navbar: 1100;
+    --z-sidebar: 1200;
+    --z-overlay: 1300;
+    --z-modal: 1400;
+    --z-top: 2000;
 }
+
 
 body{
 margin:0;
@@ -20,13 +28,13 @@ line-height:1.6;
 .navbar{
 background-color:white;
 box-shadow:var(--card-shadow);
-padding:1rem2rem;
+padding:1rem 2rem;
 display:flex;
 justify-content:space-between;
 align-items:center;
 position:sticky;
 top:0;
-z-index:1000;
+z-index: var(--z-navbar);
 }
 
 .nav-buttons{
@@ -38,7 +46,7 @@ gap:1rem;
 background-color:var(--primary-color);
 color:white;
 border:none;
-padding:0.5rem1rem;
+    padding: 0.5rem 1rem;
 border-radius:4px;
 cursor:pointer;
 transition:var(--transition);
@@ -53,13 +61,13 @@ transform:translateY(-2px);
 
 /*CenteredPanelForm*/
 form{
-background:white;
-border-radius:12px;
-box-shadow:var(--card-shadow);
-padding:2rem;
-max-width:400px;
-width:90%;
-margin:2remauto;
+    background: white;
+    border-radius: 12px;
+    box-shadow: var(--card-shadow);
+    padding: 2rem;
+    max-width: 400px;
+    width: 90%;
+    margin: 2rem auto;
 }
 
 /*Inputfields*/
@@ -67,8 +75,8 @@ input[type="text"],
 input[type="password"]{
 width:100%;
 padding:0.8rem;
-margin:0.5rem0;
-border:1pxsolid#b3e0f2;
+margin: 0.5rem 0;
+border: 1px solid #b3e0f2;
 border-radius:6px;
 box-sizing:border-box;
 transition:var(--transition);
@@ -79,7 +87,7 @@ input[type="text"]:focus,
 input[type="password"]:focus{
 outline:none;
 border-color:var(--primary-color);
-box-shadow:0002pxrgba(0,123,255,0.25);
+box-shadow: 0 0 2px rgba(0,123,255,0.25);
 }
 
 /*QRCodeCards*/
@@ -97,7 +105,7 @@ transition:var(--transition);
 
 .qr-card:hover{
 transform:translateY(-5px);
-box-shadow:06px12pxrgba(0,0,0,0.15);
+box-shadow: 0 6px 12px rgba(0,0,0,0.15);
 }
 
 .qr-cardimg{
@@ -112,7 +120,7 @@ background:white;
 border-radius:12px;
 box-shadow:var(--card-shadow);
 padding:1.5rem;
-margin:1rem;
+margin: 1rem;
 height:calc(100vh-200px);
 display:flex;
 flex-direction:column;
@@ -176,7 +184,7 @@ overflow-y:auto;
 
 .user-item{
 padding:0.8rem;
-border-bottom:1pxsolid#dee2e6;
+border-bottom: 1px solid #dee2e6;
 cursor:pointer;
 transition:var(--transition);
 }
@@ -196,7 +204,7 @@ background:white;
 border-radius:12px;
 box-shadow:var(--card-shadow);
 padding:1rem;
-margin:0.5rem0;
+margin: 0.5rem 0;
 display:flex;
 align-items:center;
 justify-content:space-between;
@@ -213,13 +221,13 @@ background:white;
 border-radius:12px;
 box-shadow:var(--card-shadow);
 padding:1rem;
-margin:1rem0;
+margin: 1rem 0;
 }
 
 video#qr-video{
 width:100%;
 border-radius:8px;
-box-shadow:02px4pxrgba(0,0,0,0.1);
+box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 /*ResponsiveDesign*/
@@ -227,7 +235,7 @@ box-shadow:02px4pxrgba(0,0,0,0.1);
 .navbar{
 flex-direction:column;
 gap:1rem;
-padding:0.5rem1rem;
+padding: 0.5rem 1rem;
 }
 
 .nav-buttons{
@@ -245,47 +253,171 @@ height:calc(100vh-250px);
 }
 
 /*Mobile-specificfixes*/
+@media(max-width:768px){
 .main-content{
 margin-left:0!important;
 padding:1rem;
+width:100%!important;
+max-width:100%!important;
+overflow-x:hidden;
 }
 
-.sidebar{
-position:fixed;
-top:70px;
-left:-250px;
-width:250px;
-height:calc(100vh-70px);
-background:white;
-box-shadow:2px02px5pxrgba(0,0,0,0.1);
-transition:left0.3sease;
-z-index:999;
+/*Ensurecontainersdon'tgetsquished*/
+.container-fluid{
+width:100%!important;
+max-width:100%!important;
+padding-left:1rem!important;
+padding-right:1rem!important;
+overflow-x:hidden;
 }
 
-.sidebar.show{
-left:0;
+/*Fixcardwidthsonmobile*/
+.card{
+width:100%!important;
+max-width:100%!important;
+margin-left:0!important;
+margin-right:0!important;
+box-sizing:border-box;
 }
 
-.sidebar-toggle{
-display:block!important;
-position:fixed;
-top:85px;
-left:15px;
-z-index:1000;
-background:var(--primary-color);
-color:white;
-border:none;
-padding:0.5rem;
-border-radius:4px;
-box-shadow:02px4pxrgba(0,0,0,0.2);
-min-width:44px;
-min-height:44px;
+/*Hideexistingdesktopsidebartoggle*/
+/* Removed - this was preventing the dock button from showing */
+
+/* Mobile Sidebar Implementation */
+@media(max-width:768px){
+    /* Hide floating toggle button on mobile */
+    #sidebarToggle{
+        display:none!important;
+    }
+
+    /* Mobile sidebar toggle button - removed, using integrated dock button */
+}
+
+/* Mobile sidebar overlay behavior */
+@media(max-width:768px){
+    #sidebar{
+        position:fixed!important;
+        top:70px!important;
+        left:0!important;
+        width:250px!important;
+        height: calc(100vh - 70px) !important;
+        background:white!important;
+        box-shadow:2px 0 5px rgba(0,0,0,0.1)!important;
+        transition:transform 0.3s ease!important;
+    z-index: var(--z-sidebar) !important;
+    transform: translateX(-100%) !important;
+    }
+
+    #sidebar.show{
+        transform:translateX(0)!important;
+    }
+
+    /* Ensure main content is NEVER affected by mobile sidebar */
+    .main-content{
+        margin-left:0!important;
+        transform:none!important;
+        width:100%!important;
+        max-width:100%!important;
+    }
+}
+
+/* Desktop sidebar behavior - ensure proper content expansion */
+@media(min-width:768px){
+    .main-content{
+        transition:margin-left 0.3s ease!important;
+    }
+    
+    /* When sidebar is collapsed */
+    .main-content.collapsed{
+        margin-left:70px!important;
+    }
+    
+    /* When sidebar is expanded */
+    .main-content.expanded{
+        margin-left:250px!important;
+    }
+    
+    /* Sidebar dock button styling consolidated at the end of this file.
+       Removed duplicate blocks to avoid conflicts — see final .sidebar-dock-btn
+       override near the bottom of the stylesheet. */
+
+/* Mobile backdrop removed: sidebar pseudo-element removed to prevent
+    full-page dimming when the sidebar is undocked. */
+
+/*EnsuremaincontentisNEVERaffectedbymobilesidebar*/
+.main-content{
+margin-left:0!important;
+transform:none!important;
+width:100%!important;
+max-width:100%!important;
 }
 
 /*Makesurelogoutbuttonhasenoughspace*/
-@media(max-width:768px){
 .navbar.d-flex.align-items-center.ms-auto{
 margin-right:60px!important;
+}
+
+/*Mobilelogoutbuttonspacing*/
+@media(max-width:768px){
+#logoutBtn{
+margin-right:60px!important;
+}
+
+.navbar.d-flex.align-items-center.ms-auto{
+margin-right:60px!important;
+padding-right:60px!important;
+}
+}
+
+/* --------------------------------------------------------------------------
+   Sidebar dock button overrides (centralized from resident/sidebar.php)
+   Keeps the dock button compact, prevents vertical stretching, and positions
+   the button on small screens so it remains visible.
+   -------------------------------------------------------------------------- */
+
+.sidebar-dock-btn {
+    width: 32px !important;
+    height: 32px !important;
+    margin-bottom: 1rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex: 0 0 auto !important;
+    align-self: flex-start !important;
+    padding: 0.35rem !important;
+}
+
+@media (max-width: 767.98px) {
+    /* small-screen adjustments for the sidebar and dock button */
+    #sidebar {
+        padding-top: 0.5rem;
+    }
+
+    .sidebar-dock-btn {
+        position: fixed !important;
+        top: 78px !important;
+        left: 12px !important;
+        right: auto !important;
+    z-index: var(--z-overlay) !important; /* place above sidebar content */
+    }
+}
+
+/*PreventBootstrapconflicts*/
+.container-fluid{
+padding-left:1rem!important;
+padding-right:1rem!important;
+margin-left:0!important;
+margin-right:0!important;
+}
+
+/*Fixcardwidthsonmobile*/
+.card{
+width:100%!important;
+max-width:100%!important;
+margin-left:0!important;
+margin-right:0!important;
+box-sizing:border-box;
+}
 }
 }
 
@@ -294,18 +426,7 @@ margin-right:60px!important;
 margin-bottom:1rem;
 }
 
-/*Mobiletables*/
-.table-responsive{
-font-size:0.875rem;
-overflow-x:auto;
--webkit-overflow-scrolling:touch;
-}
-
-.table-responsiveth,
-.table-responsivetd{
-padding:0.5rem0.25rem;
-white-space:nowrap;
-}
+/* Mobile tables - Bootstrap handles most responsive behavior */
 
 /*Mobiletableimprovements*/
 @media(max-width:768px){
@@ -320,7 +441,7 @@ display:none;
 .tabletbodytr{
 display:block;
 margin-bottom:1rem;
-border:1pxsolid#dee2e6;
+    border: 1px solid #dee2e6;
 border-radius:0.375rem;
 padding:0.75rem;
 }
@@ -328,7 +449,7 @@ padding:0.75rem;
 .tabletbodytd{
 display:block;
 text-align:right;
-padding:0.25rem0;
+    padding: 0.25rem 0;
 border:none;
 }
 
@@ -342,36 +463,120 @@ text-transform:uppercase;
 .tabletbodytd:last-child{
 border-bottom:none;
 }
+
+/*Ultra-narrowmobiletablefixes*/
+@media(max-width:360px){
+.table{
+font-size:0.75rem;
+}
+
+.tabletbodytr{
+padding:0.5rem;
+margin-bottom:0.75rem;
+}
+
+.tabletbodytd{
+    padding: 0.2rem 0;
+font-size:0.8rem;
+}
+
+.tabletbodytd:before{
+font-size:0.7rem;
+}
+}
 }
 
 /*Mobileforms*/
 form{
 max-width:100%;
 padding:1rem;
-margin:1rem0;
+    margin: 1rem 0;
+}
+
+/*Securityloginformmobilefixes*/
+@media(max-width:768px){
+.container.min-vh-100{
+padding:1rem!important;
+}
+
+.card{
+margin:1rem!important;
+padding:1.5rem!important;
+}
+
+.form-control{
+font-size:16px!important;/*PreventszoomoniOS*/
+min-height:44px!important;
+}
+
+.btn{
+min-height:44px!important;
+font-size:1rem!important;
+}
+}
+
+/*Unifiedloginformstyling*/
+.container.min-vh-100{
+    padding: 2rem 1rem;
+}
+
+.card{
+    margin: 1rem auto;
+    padding: 2rem;
+}
+
+/*Ensureidenticalinputfieldsizes*/
+.form-control{
+font-size:1rem!important;
+padding:0.75rem!important;
+min-height:48px!important;
+width:100%!important;
+box-sizing:border-box!important;
+}
+
+.btn{
+    min-height:48px!important;
+    font-size:1rem!important;
+    padding: 0.75rem 1.5rem !important;
+}
+
+/*Ensureformcontainersareidentical*/
+.mb-3{
+margin-bottom:1rem!important;
+}
+
+.mb-3.w-100{
+width:100%!important;
 }
 
 /*Mobilebuttons*/
 .btn{
-font-size:0.875rem;
-padding:0.5rem0.75rem;
+    font-size:0.875rem;
+    padding: 0.5rem 0.75rem;
 }
 
-/*MobileQRcards*/
-.qr-grid-container{
-grid-template-columns:1fr!important;
-gap:1rem;
-padding:1rem0;
+/* Mobile QR cards - Bootstrap responsive */
+@media(max-width:768px){
+#qr{
+width:100%!important;
+max-width:100%!important;
+padding:0!important;
+margin:0!important;
+overflow-x:hidden;
 }
 
-.qr-card-uniform{
-height:auto;
-min-height:300px;
+/*EnsureQRcardsdon'tgetsquished*/
+.container-fluid{
+padding-left:1rem!important;
+padding-right:1rem!important;
+overflow-x:hidden;
 }
 
-.qr-image{
-width:100px;
-height:100px;
+.card{
+margin-left:0!important;
+margin-right:0!important;
+box-sizing:border-box;
+}
 }
 
 /*Mobilevideo*/
@@ -404,6 +609,32 @@ margin-bottom:0.5rem;
 .input-group.btn{
 border-radius:0.375rem;
 }
+
+/*Ultra-narrowchatfixes*/
+@media(max-width:360px){
+.chat-messages{
+height:250px!important;
+padding:0.5rem;
+}
+
+.user-list{
+max-height:150px;
+}
+
+.input-group{
+gap:0.25rem;
+}
+
+.input-group.form-control{
+font-size:16px;
+min-height:44px;
+}
+
+.input-group.btn{
+min-height:44px;
+font-size:0.875rem;
+}
+}
 }
 
 /*Mobilemodals*/
@@ -432,12 +663,12 @@ font-size:16px;/*PreventszoomoniOS*/
 /*Mobilecardimprovements*/
 .card{
 border-radius:0.5rem;
-box-shadow:02px8pxrgba(0,0,0,0.1);
+box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
 .card-header{
-padding:0.75rem1rem;
-font-size:0.9rem;
+    padding: 0.75rem 1rem;
+    font-size:0.9rem;
 }
 
 .card-body{
@@ -472,7 +703,7 @@ margin-bottom:0.5rem;
 /*Mobilebadgeimprovements*/
 .badge{
 font-size:0.75rem;
-padding:0.35em0.65em;
+    padding: 0.35em 0.65em;
 }
 
 /*Mobilemodalimprovements*/
@@ -482,8 +713,8 @@ margin:1rem;
 }
 
 .modal-header{
-padding:1rem;
-border-bottom:1pxsolid#dee2e6;
+    padding: 1rem;
+    border-bottom: 1px solid #dee2e6;
 }
 
 .modal-body{
@@ -491,8 +722,8 @@ padding:1rem;
 }
 
 .modal-footer{
-padding:1rem;
-border-top:1pxsolid#dee2e6;
+    padding: 1rem;
+    border-top: 1px solid #dee2e6;
 }
 }
 
@@ -520,12 +751,11 @@ margin-bottom:1rem!important;
 .mt-4,.mt-5{
 margin-top:1rem!important;
 }
-}
 
 /*Extrasmallmobiledevices*/
 @media(max-width:480px){
 .navbar{
-padding:0.25rem0.5rem;
+    padding: 0.25rem 0.5rem;
 }
 
 .navbar-brand{
@@ -538,8 +768,8 @@ height:30px;
 }
 
 .btn{
-font-size:0.8rem;
-padding:0.4rem0.6rem;
+    font-size:0.8rem;
+    padding: 0.4rem 0.6rem;
 }
 
 .card{
@@ -572,156 +802,541 @@ height:200px!important;
 margin:0.5rem;
 max-width:calc(100%-1rem);
 }
+
+/* Specific optimizations for 360px width screens */
+@media(max-width:360px){
+/* Ultra-narrow mobile optimizations */
+.navbar{
+    padding: 0.2rem 0.3rem;
+    flex-wrap:wrap;
+    gap:0.25rem;
 }
 
-/*CenteredPanelsAndQRGrid*/
-#qr{
-display:grid;
-grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-gap:1rem;
-justify-items:center;
-align-items:stretch;
-max-width:1200px;
-margin:1remauto;
-padding:0 1rem;
-}
-
-.qr-card{
-background:white;
-border-radius:12px;
-box-shadow:var(--card-shadow);
-padding:1rem;
-width:100%;
-max-width:260px;
-display:flex;
-flex-direction:column;
-text-align:left;
-}
-
-.qr-card img{
-width:100%;
-height:auto;
-border-radius:8px;
-margin-bottom:0.75rem;
-}
-
-.qr-meta{
+.navbar-brand{
 font-size:0.9rem;
+}
+
+.nav-buttons{
+flex-direction:column;
+width:100%;
+gap:0.25rem;
+}
+
+.nav-button{
+    font-size:0.75rem;
+    padding: 0.3rem 0.5rem;
+    min-height:36px;
+}
+
+/*Adminmanagepagefixes*/
+.card-header.d-flex{
+flex-direction:column!important;
+align-items:stretch!important;
+gap:0.5rem;
+}
+
+.card-header.d-flex.justify-content-between{
+justify-content:flex-start!important;
+}
+
+.card-header.d-flex.align-items-center{
+align-items:flex-start!important;
+}
+
+.card-headerbutton{
+width:100%!important;
+min-width:auto!important;
+margin-top:0.5rem;
+}
+
+/*Searchandfilterfixes*/
+.d-flex.align-items-center{
+flex-direction:column!important;
+align-items:stretch!important;
+gap:0.5rem;
+}
+
+.form-select.w-auto{
+width:100%!important;
+border-radius:0.375rem!important;
+margin-bottom:0.5rem;
+}
+
+.form-control{
+border-radius:0.375rem!important;
+}
+
+/*Statisticscardsfixes*/
+.row.mb-4{
+margin-bottom:1rem!important;
+}
+
+.col-md-3{
 margin-bottom:0.75rem;
 }
 
-.qr-actions{
-margin-top:auto;
-display:flex;
-gap:0.5rem;
-flex-wrap:wrap;
+.card.bg-warning,
+.card.bg-success,
+.card.bg-danger,
+.card.bg-info{
+padding:0.75rem!important;
 }
 
-/* QR Grid Container */
-.qr-grid-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 20px;
-    padding: 20px 0;
-    max-width: 1200px;
-    margin: 0 auto;
+.card-body.text-center{
+padding:0.5rem!important;
 }
 
-/* Responsive grid - 4 cards per row on larger screens */
-@media (min-width: 1200px) {
-    .qr-grid-container {
-        grid-template-columns: repeat(4, 1fr);
-    }
+.card-title{
+font-size:0.9rem!important;
+margin-bottom:0.25rem!important;
 }
 
-@media (min-width: 992px) and (max-width: 1199px) {
-    .qr-grid-container {
-        grid-template-columns: repeat(3, 1fr);
-    }
+.card-bodyh3{
+font-size:1.5rem!important;
+margin:0!important;
 }
 
-@media (min-width: 768px) and (max-width: 991px) {
-    .qr-grid-container {
-        grid-template-columns: repeat(2, 1fr);
-    }
+/* Form optimizations for ultra-narrow screens */
+form{
+    padding:0.75rem;
+    margin: 0.5rem 0;
 }
 
-@media (max-width: 767px) {
-    .qr-grid-container {
-        grid-template-columns: 1fr;
-    }
+.form-control{
+font-size:16px;/*PreventiOSzoom*/
+padding:0.6rem;
+min-height:44px;
 }
 
-/* QR Card Item */
-.qr-card-item {
+.btn{
+    font-size:0.875rem;
+    padding: 0.5rem 0.75rem;
+    min-height:44px;
+    min-width:44px;
+}
+
+/* Card optimizations */
+.card{
+padding:0.5rem;
+margin-bottom:0.75rem;
+}
+
+.card-body{
+padding:0.75rem;
+}
+
+/* QR cards use Bootstrap responsive grid - no custom sizing needed */
+
+/* Table optimizations for ultra-narrow screens */
+.table-responsive{
+font-size:0.75rem;
+}
+
+.tabletbodytd{
+    padding: 0.2rem 0;
+}
+
+/* Modal optimizations */
+.modal-dialog{
+margin:0.25rem;
+max-width:calc(100%-0.5rem);
+}
+
+.modal-content{
+padding:0.75rem;
+}
+
+/* Chat optimizations */
+.chat-messages{
+height:250px!important;
+padding:0.5rem;
+}
+
+.user-list{
+max-height:150px;
+}
+
+/* Button group optimizations */
+.btn-group{
+flex-direction:column;
+width:100%;
+gap:0.25rem;
+}
+
+/* Input group optimizations */
+.input-group{
+flex-direction:column;
+gap:0.25rem;
+}
+
+/* Text optimizations */
+h1,h2,h3,h4,h5,h6{
+font-size:1.1rem;
+line-height:1.3;
+}
+
+.lead{
+font-size:0.9rem;
+}
+
+/* Container optimizations */
+.container,
+.container-fluid{
+padding-left:0.5rem;
+padding-right:0.5rem;
+}
+
+/* Spacing optimizations */
+.mb-4,.mb-5{
+margin-bottom:0.75rem!important;
+}
+
+.mt-4,.mt-5{
+margin-top:0.75rem!important;
+}
+
+.py-4{
+padding-top:0.75rem!important;
+padding-bottom:0.75rem!important;
+}
+
+.py-5{
+padding-top:1rem!important;
+padding-bottom:1rem!important;
+}
+}
+
+/* QR cards use Bootstrap responsive grid - no custom sizing needed */
+}
+
+/* QR Code Container - Bootstrap-based responsive design */
+#qr {
     width: 100%;
-    height: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+    box-sizing: border-box;
 }
 
-/* Uniform QR Card Styling */
-.qr-card-uniform {
-    height: 400px;
+/* Docker button styles */
+.docker-btn {
+    position: absolute;
+    right: -32px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 0 8px 8px 0;
+    width: 32px;
+    height: 64px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    z-index: calc(var(--z-sidebar) + 1);
+    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+    opacity: 0.9;
+}
+
+.docker-btn:hover {
+    opacity: 1;
+    background-color: #0056b3;
+}
+
+.docker-btn:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0,123,255,0.25);
+}
+
+.docker-btn i {
+    font-size: 14px;
+    transition: transform 0.3s ease;
+}
+
+.docker-btn.docked i {
+    transform: rotate(180deg);
+}
+
+/* Essential sidebar transitions */
+#sidebar {
+    transition: all 0.3s ease !important;
+}
+
+.main-content {
+    transition: all 0.3s ease !important;
+}
+
+.sidebar-text {
+    transition: opacity 0.2s ease !important;
+}
+
+/* Ensure content doesn't jump */
+.sidebar-button {
+    transition: padding 0.3s ease !important;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+    .docker-btn {
+        display: none !important;
+    }
+    
+    #sidebar {
+        width: 250px !important;
+    }
+    
+    .main-content {
+        margin-left: 0 !important;
+    }
+}
+
+.docker-btn:hover {
+    background-color: #0056b3;
+}
+
+.docker-btn.docked {
+    left: 250px;
+}
+
+.docker-btn.undocked {
+    left: 0;
+}
+
+@media (max-width: 768px) {
+    .docker-btn {
+        display: none;
+    }
+}
+
+/* Final compact navbar override: keep topbar compact and prevent
+   tall buttons or global .btn min-height rules from increasing its height. */
+.navbar {
+    padding: 0.5rem 1rem !important;
+    align-items: center !important;
+}
+
+.navbar .btn,
+.navbar .nav-button,
+.navbar .nav-link {
+    min-height: auto !important;
+    padding: 0.35rem 0.6rem !important;
+    line-height: 1 !important;
+}
+
+/* Ensure brand image in navbar stays small */
+.navbar-brandimg,
+.navbar-brand img {
+    width: 32px !important;
+    height: 32px !important;
+    object-fit: contain !important;
+}
+
+/* Removed sidebar dock button styles */
+
+/* ------------------------------------------------------------------
+   Class-based state styles (clear separation desktop vs mobile)
+   - #sidebar.collapsed / #sidebar.expanded control desktop widths
+   - #sidebar.mobile-open / .mobile-closed control mobile overlay
+   - .main-content.collapsed/.expanded control page shift
+   ------------------------------------------------------------------ */
+
+/* Desktop states */
+#sidebar.collapsed {
+    width: 70px !important;
+}
+
+#sidebar.expanded {
+    width: 250px !important;
+}
+
+.main-content.collapsed {
+    margin-left: 70px !important;
+}
+
+.main-content.expanded {
+    margin-left: 250px !important;
+}
+
+/* Hide text and divider when collapsed */
+#sidebar.collapsed .sidebar-text,
+#sidebar.collapsed .sidebar-divider {
+    display: none !important;
+}
+
+/* Mobile overlay states */
+#sidebar.mobile-closed {
+    transform: translateX(-100%) !important;
+}
+
+#sidebar.mobile-open {
+    transform: translateX(0) !important;
+}
+
+/* Mobile toggle (fixed) visibility and placement
+   Keep a single, consistent id-based rule so other declarations don't
+   accidentally push the button out of the viewport. The button should
+   sit near the top-right corner of the viewport and be visible at all
+   sizes (we rely on .sidebar-dock-btn overrides for visual sizing). */
+/* Removed mobile sidebar toggle button */
+
+/* Backdrop pseudo-element intentionally removed to prevent full-page
+   dimming when the sidebar is undocked. Keep visual shadow only when
+   explicitly opened on mobile (class-based). */
+
+/* Ensure there is no persistent box-shadow when the sidebar is not
+   actively opened as a mobile overlay. This prevents the "black shadow"
+   effect while keeping a subtle shadow allowed when the sidebar has the
+   mobile-open class. */
+#sidebar:not(.mobile-open) {
+    box-shadow: none !important;
+}
+
+/* QR Card responsive styling */
+.qr-card {
     transition: all 0.3s ease;
     border: 1px solid #e9ecef;
-    display: flex;
-    flex-direction: column;
 }
 
-.qr-card-uniform:hover {
+.qr-card:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 25px rgba(0,0,0,0.15);
 }
 
-.qr-card-uniform .card-body {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    padding: 20px;
-}
-
-/* QR Image Container */
-.qr-image-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-bottom: 15px;
-    height: 140px;
-}
-
+/* QR Image styling */
 .qr-image {
-    width: 120px;
-    height: 120px;
     object-fit: contain;
     border: 1px solid #dee2e6;
     background: #f8f9fa;
     border-radius: 8px;
 }
 
-/* QR Content */
-.qr-content {
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    margin-bottom: 15px;
+/* Ensure body doesn't overflow horizontally */
+body {
+    overflow-x: hidden;
 }
 
-.qr-field {
-    margin-bottom: 8px;
-    line-height: 1.4;
-    word-break: break-word;
-    font-size: 0.9rem;
-}
-
-/* QR Actions */
-.qr-actions {
-    display: flex;
-    gap: 10px;
-    margin-top: auto;
-}
-
-.qr-actions .btn {
-    flex: 1;
-    font-size: 0.875rem;
-    padding: 8px 12px;
-}
+/* Fix main content on mobile */
+/* Mobile helper class: when the toggle lives outside the sidebar we apply
+   the .mobile-fixed class to pin it to the viewport. When the toggle is
+   moved inside the sidebar (so it scrolls with content) this class is
+   removed by JS. */
+/* Removed mobile dock button positioning */
+    
+    .container-fluid {
+        padding: 1rem !important;
+        margin: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: hidden;
+    }
+    
+    /* Ensure sidebar is pure overlay on mobile */
+    #sidebar {
+        position: fixed !important;
+        top: 70px !important;
+        left: 0 !important;
+        width: 250px !important;
+        height: calc(100vh - 70px) !important;
+        background: white !important;
+        box-shadow: 2px 0 5px rgba(0,0,0,0.1) !important;
+        transition: transform 0.3s ease !important;
+    z-index: var(--z-sidebar) !important;
+        transform: translateX(-100%) !important;
+    }
+    
+    #sidebar.show {
+        transform: translateX(0) !important;
+    }
+    
+    /* Mobile backdrop removed: sidebar pseudo-element removed to prevent
+       full-page dimming when the sidebar is undocked. */
+    
+    /* Ensure main content is never pushed by sidebar */
+    .main-content {
+        margin-left: 0 !important;
+        transform: none !important;
+    }
+    
+    /* Fix specific page containers for mobile */
+    .container {
+        padding: 1rem !important;
+        margin: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: hidden;
+    }
+    
+    /* Fix admin manage page layout */
+    .row.g-4 {
+        margin: 0 !important;
+        gap: 1rem !important;
+    }
+    
+    .row.g-4 > .col-lg-4 {
+        margin-bottom: 1rem !important;
+    }
+    
+    /* Fix card headers on mobile */
+    .card-header.d-flex {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 0.5rem;
+    }
+    
+    .card-header button {
+        width: 100% !important;
+        min-width: auto !important;
+    }
+    
+    /* Fix search and filter components */
+    .d-flex.align-items-center {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 0.5rem;
+    }
+    
+    .form-select.w-auto {
+        width: 100% !important;
+        border-radius: 0.375rem !important;
+        margin-bottom: 0.5rem;
+    }
+    
+    .form-control {
+        border-radius: 0.375rem !important;
+    }
+    
+    /* Fix statistics cards */
+    .row.mb-4 {
+        margin-bottom: 1rem !important;
+    }
+    
+    .col-md-3 {
+        margin-bottom: 0.75rem;
+    }
+    
+    .card.bg-warning,
+    .card.bg-success,
+    .card.bg-danger,
+    .card.bg-info {
+        padding: 0.75rem !important;
+    }
+    
+    .card-body.text-center {
+        padding: 0.5rem !important;
+    }
+    
+    .card-title {
+        font-size: 0.9rem !important;
+        margin-bottom: 0.25rem !important;
+    }
+    
+    .card-body h3 {
+        font-size: 1.5rem !important;
+        margin: 0 !important;
+    }
+    
+     /* QR cards use Bootstrap grid - no custom CSS needed */
+ 

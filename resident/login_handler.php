@@ -1,8 +1,18 @@
 <?php
 // resident/login_handler.php
-session_start();
+
+// Include secure configuration
+require_once '../config.php';
+
+configureSecureSession();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Rate limiting for login attempts
+    if (!checkRateLimit('resident_login', 5, 300)) { // 5 attempts per 5 minutes
+        header('Location: index.php?error=rate_limit');
+        exit;
+    }
+    
     $user = $_POST['user'] ?? '';
     $pass = $_POST['pass'] ?? '';
     
@@ -11,9 +21,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
     
-    $conn = new mysqli('localhost', 'synergy1', 'Hu49xW-b[8lY0R', 'synergy1_siewyaoying_resident_management');
-    if ($conn->connect_error) {
-        error_log('Database connection failed: ' . $conn->connect_error);
+    try {
+        $conn = getDatabaseConnection();
+    } catch (Exception $e) {
+        error_log('Database connection failed: ' . $e->getMessage());
         header('Location: index.php?error=db_error');
         exit;
     }
@@ -31,6 +42,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['room_code'] = $row['room_code'];
             $_SESSION['email'] = $row['email'];
             $_SESSION['type'] = 'resident';
+            
+            // Regenerate session ID for security
+            session_regenerate_id(true);
             
             // Clear any existing reset tokens after successful login
             $clearStmt = $conn->prepare("UPDATE residents SET reset_token = NULL, reset_token_expiry = NULL WHERE id = ?");

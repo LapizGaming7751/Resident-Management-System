@@ -2,7 +2,9 @@
 // Unified API for Finals_CheckInSystem
 // Fixed version with proper announcement CRUD operations
 
-date_default_timezone_set("Singapore");
+// Include secure configuration
+require_once 'config.php';
+
 include("phpqrcode/qrlib.php");
 
 // Disable error display for API responses to prevent HTML in JSON
@@ -10,15 +12,12 @@ error_reporting(E_ALL);
 ini_set('display_errors', 0); // Changed to 0 to prevent HTML errors in JSON response
 ini_set('log_errors', 1); // Log errors instead of displaying them
 
-$host = 'localhost';
-$db = 'synergy1_siewyaoying_resident_management';
-$db_user = 'synergy1';
-$db_pass = 'Hu49xW-b[8lY0R';
-
-$conn = new mysqli($host, $db_user, $db_pass, $db);
-if ($conn->connect_error) {
+// Get database connection using secure configuration
+try {
+    $conn = getDatabaseConnection();
+} catch (Exception $e) {
     http_response_code(500);
-    echo json_encode(["message" => "Database connection failed: " . $conn->connect_error]);
+    echo json_encode(["message" => "Database connection failed: " . $e->getMessage()]);
     exit;
 }
 
@@ -34,9 +33,32 @@ if (file_exists('email_config.php')) {
     }
 }
 
-session_start();
+// Fallback email functions for invite codes
+if (!function_exists('sendInviteEmail')) {
+    function sendInviteEmail($email, $invite_code, $user_type, $room_code = null, $expires_at = null) {
+        // For now, just log the invite details instead of sending email
+        error_log("Invite email would be sent to: $email, Code: $invite_code, Type: $user_type, Room: $room_code, Expires: $expires_at");
+        
+        // In a real implementation, you would send the email here
+        // For testing purposes, we'll return false to indicate email wasn't sent
+        return false;
+    }
+}
+
+configureSecureSession();
 header("Content-Type: application/json");
-header("Access-Control-Allow-Origin: " . ($_SERVER['HTTP_ORIGIN'] ?? 'https://siewyaoying.synergy-college.org'));
+// Secure CORS configuration - only allow specific origins
+$allowed_origins = [
+    'https://siewyaoying.synergy-college.org',
+    'https://siewyaoying.synergy-college.org/ResidentManagementSystem'
+];
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+if (in_array($origin, $allowed_origins)) {
+    header("Access-Control-Allow-Origin: $origin");
+} else {
+    // Default to the main domain for same-origin requests
+    header("Access-Control-Allow-Origin: https://siewyaoying.synergy-college.org");
+}
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
 header("Access-Control-Allow-Credentials: true");
@@ -51,30 +73,72 @@ $requestData = json_decode(file_get_contents("php://input"), true);
 $time = date("Y-m-d H:i:s");
 
 // --- Helper Functions ---
-function fetchList($conn, $sql) {
-    $result = $conn->query($sql);
+function fetchList($conn, $sql, $params = []) {
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        error_log('SQL Prepare Error: ' . $conn->error . ' | Query: ' . $sql);
+        http_response_code(500);
+        echo json_encode(["message" => "Database prepare error: " . $conn->error, "error" => true]);
+        exit;
+    }
+    
+    if (!empty($params)) {
+        $types = str_repeat('s', count($params));
+        $stmt->bind_param($types, ...$params);
+    }
+    
+    $stmt->execute();
+    $result = $stmt->get_result();
     $list = [];
+    
     if ($result) {
         while ($row = $result->fetch_assoc()) {
             $list[] = $row;
         }
+        $stmt->close();
         return $list;
     } else {
-        error_log('SQL Error: ' . $conn->error . ' | Query: ' . $sql);
+        error_log('SQL Execute Error: ' . $stmt->error . ' | Query: ' . $sql);
+        $stmt->close();
         http_response_code(500);
-        echo json_encode(["message" => "Database error: " . $conn->error, "error" => true, "sql" => $sql]);
+        echo json_encode(["message" => "Database execute error: " . $stmt->error, "error" => true]);
         exit;
     }
 }
 
 function fetchMessages($conn, $sender_id, $sender_type, $receiver_id, $receiver_type) {
-    $sql = "SELECT * FROM messages WHERE ((sender_id = '$sender_id' AND sender_type = '$sender_type' AND receiver_id = '$receiver_id' AND receiver_type = '$receiver_type') OR (sender_id = '$receiver_id' AND sender_type = '$receiver_type' AND receiver_id = '$sender_id' AND receiver_type = '$sender_type')) ORDER BY created_at ASC";
-    return fetchList($conn, $sql);
+    $stmt = $conn->prepare("SELECT * FROM messages WHERE ((sender_id = ? AND sender_type = ? AND receiver_id = ? AND receiver_type = ?) OR (sender_id = ? AND sender_type = ? AND receiver_id = ? AND receiver_type = ?)) ORDER BY created_at ASC");
+    $stmt->bind_param('isisisis', $sender_id, $sender_type, $receiver_id, $receiver_type, $receiver_id, $receiver_type, $sender_id, $sender_type);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    $list = [];
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $list[] = $row;
+        }
+    } else {
+        error_log('SQL Error: ' . $stmt->error);
+        http_response_code(500);
+        echo json_encode(["message" => "Database error: " . $stmt->error, "error" => true]);
+        exit;
+    }
+    $stmt->close();
+    return $list;
 }
 
 function login($conn, $table, $user, $pass, $session_keys) {
-    $sql = "SELECT * FROM $table WHERE user = '$user'";
-    $result = $conn->query($sql);
+    // Validate table name to prevent SQL injection
+    $allowed_tables = ['residents', 'admins', 'security'];
+    if (!in_array($table, $allowed_tables)) {
+        return ["message" => "Invalid table name", "error" => true];
+    }
+    
+    $stmt = $conn->prepare("SELECT * FROM $table WHERE user = ?");
+    $stmt->bind_param('s', $user);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
     if ($result) {
         $row = $result->fetch_assoc();
         if ($row && password_verify($pass, $row['pass'])) {
@@ -82,10 +146,13 @@ function login($conn, $table, $user, $pass, $session_keys) {
                 $_SESSION[$key] = $row[$val];
             }
             $_SESSION['type'] = $table;
+            $stmt->close();
             return ["message" => "Welcome, " . $row['user'] . ".", "error" => false];
         }
+        $stmt->close();
         return ["message" => ucfirst($table) . " not found", "error" => true];
     }
+    $stmt->close();
     return ["message" => "Query failed: " . $conn->error, "error" => true];
 }
 
@@ -95,7 +162,10 @@ function errorResponse($msg) {
     exit;
 }
 
+// These functions are deprecated - use prepared statements instead
+// Keeping for backward compatibility but they should not be used for new code
 function insertRow($conn, $sql) {
+    error_log("WARNING: insertRow() function is deprecated. Use prepared statements instead.");
     if ($conn->query($sql)) {
         return ["message" => "Insert successful", "error" => false];
     }
@@ -103,6 +173,7 @@ function insertRow($conn, $sql) {
 }
 
 function updateRow($conn, $sql) {
+    error_log("WARNING: updateRow() function is deprecated. Use prepared statements instead.");
     if ($conn->query($sql)) {
         return ["message" => "Update successful", "error" => false];
     }
@@ -110,6 +181,7 @@ function updateRow($conn, $sql) {
 }
 
 function deleteRow($conn, $sql) {
+    error_log("WARNING: deleteRow() function is deprecated. Use prepared statements instead.");
     if ($conn->query($sql)) {
         return ["message" => "Delete successful", "error" => false];
     }
@@ -122,24 +194,50 @@ switch ($method) {
         $type = $_GET['type'] ?? '';
         $fetch = $_GET['fetch'] ?? '';
         $id = $_GET['created_by'] ?? ($_SESSION['id'] ?? '');
+        
+        // Debug session information
+        error_log("GET Request - Type: $type, Fetch: $fetch, ID: $id, Session ID: " . ($_SESSION['id'] ?? 'not set') . ", Session Type: " . ($_SESSION['type'] ?? 'not set'));
+        
         // Validate resident/guard ID is numeric
         if ($id !== '' && !ctype_digit(strval($id))) {
             errorResponse("Invalid resident/guard ID: $id");
         }
         if ($type === "resident") {
             if ($fetch === "announcements") {
-                $list = fetchList($conn, "SELECT * FROM announcements ORDER BY post_time DESC");
+                $list = fetchList($conn, "SELECT * FROM announcements ORDER BY post_time DESC", []);
                 echo json_encode($list !== false ? $list : []);
                 exit;
             }elseif ($id && ($fetch === '' || $fetch === 'qr' || !isset($_GET['fetch']))) {
                 // QR fetch: ?type=resident&created_by=ID or ?type=resident&created_by=ID&fetch=qr
-                $list = fetchList($conn, "SELECT * FROM codes WHERE created_by = '$id'");
-                echo json_encode($list !== false ? $list : []);
+                $stmt = $conn->prepare("SELECT * FROM codes WHERE created_by = ?");
+                $stmt->bind_param('i', $id);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                
+                $list = [];
+                if ($result) {
+                    while ($row = $result->fetch_assoc()) {
+                        $list[] = $row;
+                    }
+                }
+                $stmt->close();
+                echo json_encode($list);
             } else if ($id && $fetch) {
                 switch ($fetch) {
                     case "notifications":
-                        $list = fetchList($conn, "SELECT * FROM notifications WHERE resident_id = '$id' AND is_read = 0 ORDER BY created_at DESC");
-                        echo json_encode($list !== false ? $list : []);
+                        $stmt = $conn->prepare("SELECT * FROM notifications WHERE resident_id = ? AND is_read = 0 ORDER BY created_at DESC");
+                        $stmt->bind_param('i', $id);
+                        $stmt->execute();
+                        $result = $stmt->get_result();
+                        
+                        $list = [];
+                        if ($result) {
+                            while ($row = $result->fetch_assoc()) {
+                                $list[] = $row;
+                            }
+                        }
+                        $stmt->close();
+                        echo json_encode($list);
                         break;
                     case "messages":
                         $security_id = $_GET['security_id'] ?? 0;
@@ -147,12 +245,23 @@ switch ($method) {
                         echo json_encode($list !== false ? $list : []);
                         break;
                     case "security_list":
-                        $list = fetchList($conn, "SELECT id, user FROM security");
+                        $list = fetchList($conn, "SELECT id, user FROM security", []);
                         echo json_encode($list !== false ? $list : []);
                         break;
                     case "messaged_security_list":
-                        $list = fetchList($conn, "SELECT DISTINCT s.id, s.user FROM messages m INNER JOIN security s ON m.sender_id = s.id WHERE m.receiver_id = '$id' AND m.receiver_type = 'resident' AND m.sender_type = 'security' ORDER BY m.id DESC");
-                        echo json_encode($list !== false ? $list : []);
+                        $stmt = $conn->prepare("SELECT DISTINCT s.id, s.user FROM messages m INNER JOIN security s ON m.sender_id = s.id WHERE m.receiver_id = ? AND m.receiver_type = 'resident' AND m.sender_type = 'security' ORDER BY m.id DESC");
+                        $stmt->bind_param('i', $id);
+                        $stmt->execute();
+                        $result = $stmt->get_result();
+                        
+                        $list = [];
+                        if ($result) {
+                            while ($row = $result->fetch_assoc()) {
+                                $list[] = $row;
+                            }
+                        }
+                        $stmt->close();
+                        echo json_encode($list);
                         break;
                     default:
                         errorResponse("Fetch not recognized");
@@ -167,32 +276,32 @@ switch ($method) {
             if ($fetch) {
                 switch ($fetch) {
                     case "resident":
-                        $list = fetchList($conn, "SELECT * FROM residents");
+                        $list = fetchList($conn, "SELECT * FROM residents", []);
                         echo json_encode($list !== false ? $list : []);
                         break;
                     case "admin":
-                        $list = fetchList($conn, "SELECT * FROM admins");
+                        $list = fetchList($conn, "SELECT * FROM admins", []);
                         echo json_encode($list !== false ? $list : []);
                         break;
                     case "log":
-                        $list = fetchList($conn, "SELECT logs.id, logs.token, logs.scan_time, logs.scan_type, logs.scan_by, security.user AS scanner_username, codes.intended_visitor AS intended_visitor, residents.user AS created_by_username, residents.room_code AS created_by_room FROM logs LEFT JOIN security ON logs.scan_by = security.id LEFT JOIN codes ON logs.token = codes.token LEFT JOIN residents ON codes.created_by = residents.id");
+                        $list = fetchList($conn, "SELECT logs.id, logs.token, logs.scan_time, logs.scan_type, logs.scan_by, security.user AS scanner_username, codes.intended_visitor AS intended_visitor, residents.user AS created_by_username, residents.room_code AS created_by_room FROM logs LEFT JOIN security ON logs.scan_by = security.id LEFT JOIN codes ON logs.token = codes.token LEFT JOIN residents ON codes.created_by = residents.id", []);
                         echo json_encode($list !== false ? $list : []);
                         break;
                     case "security":
-                        $list = fetchList($conn, "SELECT * FROM security");
+                        $list = fetchList($conn, "SELECT * FROM security", []);
                         echo json_encode($list !== false ? $list : []);
                         break;
                     case "announcements":
-                        $list = fetchList($conn, "SELECT * FROM announcements ORDER BY post_time DESC");
+                        $list = fetchList($conn, "SELECT * FROM announcements ORDER BY post_time DESC", []);
                         echo json_encode($list !== false ? $list : []);
                         break;
                     case "invite_codes":
-                        $list = fetchList($conn, "SELECT ic.*, a.user as created_by_name FROM invite_codes ic LEFT JOIN admins a ON ic.created_by = a.id ORDER BY ic.created_at DESC");
+                        $list = fetchList($conn, "SELECT ic.*, a.user as created_by_name FROM invite_codes ic LEFT JOIN admins a ON ic.created_by = a.id ORDER BY ic.created_at DESC", []);
                         echo json_encode($list !== false ? $list : []);
                         break;
                     case "blacklist":
                         try {
-                            $list = fetchList($conn, "SELECT b.*, a.user as created_by_name FROM blacklist b LEFT JOIN admins a ON b.created_by = a.id ORDER BY b.created_at DESC");
+                            $list = fetchList($conn, "SELECT b.*, a.user as created_by_name FROM blacklist b LEFT JOIN admins a ON b.created_by = a.id ORDER BY b.created_at DESC", []);
                             echo json_encode($list !== false ? $list : []);
                         } catch (Exception $e) {
                             echo json_encode(["error" => true, "message" => "Database error: " . $e->getMessage()]);
@@ -215,7 +324,7 @@ switch ($method) {
                         echo json_encode($list !== false ? $list : []);
                         break;
                     case "resident_list":
-                        $list = fetchList($conn, "SELECT id, user, room_code FROM residents");
+                        $list = fetchList($conn, "SELECT id, user, room_code FROM residents", []);
                         echo json_encode($list !== false ? $list : []);
                         break;
                     default:
@@ -225,20 +334,47 @@ switch ($method) {
                 $resp = login($conn, 'security', $_GET['user'], $_GET['pass'], ["id" => "id", "user" => "user"]);
                 echo json_encode($resp);
             }
+        } elseif ($type === "get_csrf_token") {
+            // Generate and return CSRF token
+            $token = generateCSRFToken();
+            echo json_encode(["csrf_token" => $token, "error" => false]);
         }
         break;
     case "POST":
         $type = $requestData['type'] ?? '';
         
+        // CSRF Protection for state-changing operations
+        $csrf_protected_operations = [
+            'create_resident_invite', 'create_security_invite', 'register_with_invite',
+            'register_security', 'register_admin', 'resident', 'guest', 'chat',
+            'create_announcement', 'request_password_reset', 'reset_password',
+            'admin' // Add admin operations to CSRF protection
+        ];
+        
+        if (in_array($type, $csrf_protected_operations)) {
+            $csrf_token = $requestData['csrf_token'] ?? '';
+            if (!validateCSRFToken($csrf_token)) {
+                http_response_code(403);
+                echo json_encode(["message" => "CSRF token validation failed", "error" => true]);
+                exit;
+            }
+        }
+        
         // Handle announcement deletion (using POST with action parameter)
         if ($type === "admin" && isset($requestData['fetch']) && $requestData['fetch'] === 'announcement' && isset($requestData['action']) && $requestData['action'] === 'delete') {
             $id = $requestData['id'] ?? '';
-            if (empty($id)) {
-                echo json_encode(["message" => "Announcement ID is required", "error" => true]);
+            if (empty($id) || !is_numeric($id)) {
+                echo json_encode(["message" => "Valid announcement ID is required", "error" => true]);
                 exit;
             }
-            $sql = "DELETE FROM announcements WHERE id = '$id'";
-            echo json_encode(deleteRow($conn, $sql));
+            $stmt = $conn->prepare("DELETE FROM announcements WHERE id = ?");
+            $stmt->bind_param('i', $id);
+            if ($stmt->execute()) {
+                echo json_encode(["message" => "Delete successful", "error" => false]);
+            } else {
+                echo json_encode(["message" => "Delete failed: " . $stmt->error, "error" => true]);
+            }
+            $stmt->close();
             exit;
         }
         
@@ -466,7 +602,12 @@ switch ($method) {
             }
             
             // Check if user exists
+            $allowed_tables = ['residents', 'admins', 'security'];
             $table = $user_type === 'admin' ? 'admins' : $user_type . 's';
+            if (!in_array($table, $allowed_tables)) {
+                echo json_encode(["message" => "Invalid user type", "error" => true]);
+                exit;
+            }
             $checkStmt = $conn->prepare("SELECT id FROM $table WHERE email = ?");
             $checkStmt->bind_param('s', $email);
             $checkStmt->execute();
@@ -483,7 +624,10 @@ switch ($method) {
             $checkStmt->close();
             
             // Invalidate any existing reset tokens for this user
-            $conn->query("UPDATE password_reset_tokens SET is_used = 1 WHERE user_id = $user_id AND user_type = '$user_type'");
+            $stmt = $conn->prepare("UPDATE password_reset_tokens SET is_used = 1 WHERE user_id = ? AND user_type = ?");
+            $stmt->bind_param('is', $user_id, $user_type);
+            $stmt->execute();
+            $stmt->close();
             
             // Generate secure reset token
             $token = bin2hex(random_bytes(32));
@@ -597,7 +741,12 @@ switch ($method) {
             $checkStmt->close();
             
             // Additional security: Verify the email in the token still matches the account
+            $allowed_tables = ['residents', 'admins', 'security'];
             $table = $resetToken['user_type'] === 'admin' ? 'admins' : $resetToken['user_type'] . 's';
+            if (!in_array($table, $allowed_tables)) {
+                echo json_encode(["message" => "Invalid user type in token", "error" => true]);
+                exit;
+            }
             $verifyStmt = $conn->prepare("SELECT id, email FROM $table WHERE id = ? AND email = ?");
             $verifyStmt->bind_param('is', $resetToken['user_id'], $resetToken['email']);
             $verifyStmt->execute();
@@ -616,6 +765,10 @@ switch ($method) {
             
             try {
                 // Update password
+                $allowed_tables = ['residents', 'admins', 'security'];
+                if (!in_array($table, $allowed_tables)) {
+                    throw new Exception("Invalid user type in token");
+                }
                 $updateStmt = $conn->prepare("UPDATE $table SET pass = ? WHERE id = ?");
                 $updateStmt->bind_param('si', $hashedPassword, $resetToken['user_id']);
                 
@@ -671,7 +824,12 @@ switch ($method) {
             $checkStmt->close();
             
             // Check if username already exists in the target table
+            $allowed_tables = ['residents', 'security'];
             $table = $invite['user_type'] === 'resident' ? 'residents' : 'security';
+            if (!in_array($table, $allowed_tables)) {
+                echo json_encode(["message" => "Invalid user type in invite", "error" => true]);
+                exit;
+            }
             $checkUserStmt = $conn->prepare("SELECT id FROM $table WHERE user = ?");
             $checkUserStmt->bind_param('s', $user);
             $checkUserStmt->execute();
@@ -722,15 +880,23 @@ switch ($method) {
             }
         } elseif ($type === "register_security") {
             $user = $requestData['user'] ?? '';
-            $pass = password_hash($requestData['pass'] ?? '', PASSWORD_DEFAULT);
+            $pass = $requestData['pass'] ?? '';
 
-            if (empty($user) || empty($requestData['pass'])) {
+            if (empty($user) || empty($pass)) {
                 echo json_encode(["message" => "Username and password required", "error" => true]);
                 exit;
             }
 
-            $sql = "INSERT INTO security (user, pass) VALUES ('$user', '$pass')";
-            echo json_encode(insertRow($conn, $sql));
+            $hashedPass = password_hash($pass, PASSWORD_DEFAULT);
+            $stmt = $conn->prepare("INSERT INTO security (user, pass) VALUES (?, ?)");
+            $stmt->bind_param('ss', $user, $hashedPass);
+            
+            if ($stmt->execute()) {
+                echo json_encode(["message" => "Insert successful", "error" => false]);
+            } else {
+                echo json_encode(["message" => "Insert failed: " . $stmt->error, "error" => true]);
+            }
+            $stmt->close();
         } elseif ($type === "register_admin") {
             $user = $requestData['user'] ?? '';
             $pass = $requestData['pass'] ?? '';
@@ -755,9 +921,15 @@ switch ($method) {
 
             $hashedPass = password_hash($pass, PASSWORD_BCRYPT);
 
-            $sql = "INSERT INTO admins (user, pass, access_level) 
-                    VALUES ('$user', '$hashedPass', '$access_level')";
-            echo json_encode(insertRow($conn, $sql));
+            $stmt = $conn->prepare("INSERT INTO admins (user, pass, access_level) VALUES (?, ?, ?)");
+            $stmt->bind_param('ssi', $user, $hashedPass, $access_level);
+            
+            if ($stmt->execute()) {
+                echo json_encode(["message" => "Insert successful", "error" => false]);
+            } else {
+                echo json_encode(["message" => "Insert failed: " . $stmt->error, "error" => true]);
+            }
+            $stmt->close();
         } elseif ($type === "resident") {
             $created_by = $requestData['created_by'] ?? '';
             // Validate created_by is numeric
@@ -783,19 +955,22 @@ switch ($method) {
             
             $token = bin2hex(random_bytes(5));
             $is_blocked = $requestData['is_blocked'] ?? 0;
-            $sql = "INSERT INTO codes (token, created_by, expiry, intended_visitor, plate_id, is_blocked) VALUES ('$token','$created_by','$expiry','$name','$plate', '$is_blocked')";
             
-            // Insert into database first
-            $result = $conn->query($sql);
-            if (!$result) {
-                echo json_encode(["message" => "Database insert failed: " . $conn->error, "error" => true]);
+            // Insert into database first using prepared statement
+            $stmt = $conn->prepare("INSERT INTO codes (token, created_by, expiry, intended_visitor, plate_id, is_blocked) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param('sisssi', $token, $created_by, $expiry, $name, $plate, $is_blocked);
+            
+            if (!$stmt->execute()) {
+                echo json_encode(["message" => "Database insert failed: " . $stmt->error, "error" => true]);
+                $stmt->close();
                 exit;
             }
+            $stmt->close();
             
             // Generate QR code image
             $qr_path = "qr/" . $token . ".png";
             if (!file_exists("qr")) {
-                mkdir("qr", 0777, true);
+                mkdir("qr", 0755, true);
             }
             
             // Generate QR code with token as content
@@ -808,12 +983,15 @@ switch ($method) {
             $email_sent = false;
             if (!empty($email) && filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 // Get resident information for email
-                $resident_query = "SELECT user, room_code FROM residents WHERE id = '$created_by'";
-                $resident_result = $conn->query($resident_query);
+                $resident_stmt = $conn->prepare("SELECT user, room_code FROM residents WHERE id = ?");
+                $resident_stmt->bind_param('i', $created_by);
+                $resident_stmt->execute();
+                $resident_result = $resident_stmt->get_result();
                 if ($resident_result && $resident_result->num_rows > 0) {
                     $resident = $resident_result->fetch_assoc();
                     $email_sent = sendQREmail($email, $token, $name, $plate, $expiry, $resident['user'], $resident['room_code']);
                 }
+                $resident_stmt->close();
             }
             
             $response = [
@@ -842,18 +1020,41 @@ switch ($method) {
                 exit;
             }
 
+            // Validate scan_by is a valid security user ID
+            if (!is_numeric($scan_by) || $scan_by <= 0) {
+                echo json_encode(["message" => "Invalid security user ID. Please log in again.", "error" => true]);
+                exit;
+            }
+
+            // Check if security user exists
+            $stmt = $conn->prepare("SELECT id FROM security WHERE id = ?");
+            $stmt->bind_param('i', $scan_by);
+            $stmt->execute();
+            $security_check = $stmt->get_result();
+            if (!$security_check || $security_check->num_rows === 0) {
+                $stmt->close();
+                echo json_encode(["message" => "Security user not found. Please log in again.", "error" => true]);
+                exit;
+            }
+            $stmt->close();
+
             // Check if token exists and is still valid
-            $sql = "SELECT c.*, r.user AS resident_name, r.room_code 
+            $stmt = $conn->prepare("SELECT c.*, r.user AS resident_name, r.room_code 
                     FROM codes c 
                     LEFT JOIN residents r ON c.created_by = r.id 
-                    WHERE c.token = '$token' AND c.expiry > NOW()";
-            $result = $conn->query($sql);
+                    WHERE c.token = ? AND c.expiry > NOW()");
+            $stmt->bind_param('s', $token);
+            $stmt->execute();
+            $result = $stmt->get_result();
 
             if ($result && $result->num_rows > 0) {
                 $row = $result->fetch_assoc();
 
                 // Check if this token has already been logged as 'In'
-                $logCheck = $conn->query("SELECT * FROM logs WHERE token = '$token' ORDER BY scan_time DESC LIMIT 1");
+                $logStmt = $conn->prepare("SELECT * FROM logs WHERE token = ? ORDER BY scan_time DESC LIMIT 1");
+                $logStmt->bind_param('s', $token);
+                $logStmt->execute();
+                $logCheck = $logStmt->get_result();
 
                 if ($logCheck && $logCheck->num_rows > 0) {
                     $lastLog = $logCheck->fetch_assoc();
@@ -861,6 +1062,13 @@ switch ($method) {
                     if ($lastLog['scan_type'] === 'In') {
                         // Check if QR code is exit-blocked
                         if ($row['is_blocked'] == 1) {
+                            // Create notification for the resident about blocked exit attempt
+                            $notification_message = "Your visitor '{$row['intended_visitor']}' attempted to exit but was blocked. Please unblock the QR code if you want to allow them to leave.";
+                            $notifStmt = $conn->prepare("INSERT INTO notifications (resident_id, message) VALUES (?, ?)");
+                            $notifStmt->bind_param('is', $row['created_by'], $notification_message);
+                            $notifStmt->execute();
+                            $notifStmt->close();
+
                             echo json_encode([
                                 "message" => "Exit denied: This QR code is exit-blocked. Please contact the resident to unblock it.",
                                 "error" => true,
@@ -874,12 +1082,23 @@ switch ($method) {
                         }
                         
                         // If last was 'In', this scan should be 'Out' → expire the code
-                        $log_sql = "INSERT INTO logs (token, scan_type, scan_by) 
-                                    VALUES ('$token', 'Out', '$scan_by')";
-                        $conn->query($log_sql);
+                        $logStmt2 = $conn->prepare("INSERT INTO logs (token, scan_type, scan_by) VALUES (?, 'Out', ?)");
+                        $logStmt2->bind_param('si', $token, $scan_by);
+                        $logStmt2->execute();
+                        $logStmt2->close();
+
+                        // Create notification for the resident when visitor checks out
+                        $notification_message = "Your visitor '{$row['intended_visitor']}' has checked out and left.";
+                        $notifStmt2 = $conn->prepare("INSERT INTO notifications (resident_id, message) VALUES (?, ?)");
+                        $notifStmt2->bind_param('is', $row['created_by'], $notification_message);
+                        $notifStmt2->execute();
+                        $notifStmt2->close();
 
                         // Expire the code immediately
-                        $conn->query("UPDATE codes SET expiry = NOW() WHERE token = '$token'");
+                        $expireStmt = $conn->prepare("UPDATE codes SET expiry = NOW() WHERE token = ?");
+                        $expireStmt->bind_param('s', $token);
+                        $expireStmt->execute();
+                        $expireStmt->close();
 
                         echo json_encode([
                             "message" => "Visitor {$row['intended_visitor']} checked OUT successfully.",
@@ -895,9 +1114,17 @@ switch ($method) {
                 }
 
                 // Default → first scan, mark as 'In'
-                $log_sql = "INSERT INTO logs (token, scan_type, scan_by) 
-                            VALUES ('$token', 'In', '$scan_by')";
-                $conn->query($log_sql);
+                $logStmt3 = $conn->prepare("INSERT INTO logs (token, scan_type, scan_by) VALUES (?, 'In', ?)");
+                $logStmt3->bind_param('si', $token, $scan_by);
+                $logStmt3->execute();
+                $logStmt3->close();
+
+                // Create notification for the resident who created the QR code
+                $notification_message = "Your visitor '{$row['intended_visitor']}' has arrived and checked in.";
+                $notifStmt3 = $conn->prepare("INSERT INTO notifications (resident_id, message) VALUES (?, ?)");
+                $notifStmt3->bind_param('is', $row['created_by'], $notification_message);
+                $notifStmt3->execute();
+                $notifStmt3->close();
 
                 echo json_encode([
                     "message" => "Welcome {$row['intended_visitor']}! Entry logged successfully.",
@@ -920,12 +1147,26 @@ switch ($method) {
             $sender_type = $requestData['sender_type'] ?? '';
             $receiver_id = $requestData['receiver_id'] ?? '';
             $receiver_type = $requestData['receiver_type'] ?? '';
-            $message = $conn->real_escape_string($requestData['message'] ?? '');
-            $sql = "INSERT INTO messages (sender_id, sender_type, receiver_id, receiver_type, message) VALUES ('$sender_id', '$sender_type', '$receiver_id', '$receiver_type', '$message')";
-            echo json_encode(insertRow($conn, $sql));
+            $message = $requestData['message'] ?? '';
+            
+            // Validate input
+            if (empty($sender_id) || empty($sender_type) || empty($receiver_id) || empty($receiver_type) || empty($message)) {
+                echo json_encode(["message" => "All fields are required", "error" => true]);
+                exit;
+            }
+            
+            $stmt = $conn->prepare("INSERT INTO messages (sender_id, sender_type, receiver_id, receiver_type, message) VALUES (?, ?, ?, ?, ?)");
+            $stmt->bind_param('isiss', $sender_id, $sender_type, $receiver_id, $receiver_type, $message);
+            
+            if ($stmt->execute()) {
+                echo json_encode(["message" => "Insert successful", "error" => false]);
+            } else {
+                echo json_encode(["message" => "Insert failed: " . $stmt->error, "error" => true]);
+            }
+            $stmt->close();
         } elseif ($type === "create_announcement") {
-            $title = $conn->real_escape_string($requestData['title'] ?? '');
-            $content = $conn->real_escape_string($requestData['content'] ?? '');
+            $title = $requestData['title'] ?? '';
+            $content = $requestData['content'] ?? '';
 
             if (empty($title) || empty($content)) {
                 echo json_encode(["message" => "Title and content are required", "error" => true]);
@@ -942,42 +1183,76 @@ switch ($method) {
             // Build INSERT query based on available columns
             if (in_array('created_by', $available_columns)) {
                 $created_by = $_SESSION['id'] ?? 0;
-                $sql = "INSERT INTO announcements (title, content, post_time, created_by) 
-                        VALUES ('$title', '$content', '$time', '$created_by')";
+                $stmt = $conn->prepare("INSERT INTO announcements (title, content, post_time, created_by) VALUES (?, ?, ?, ?)");
+                $stmt->bind_param('sssi', $title, $content, $time, $created_by);
             } else {
                 // If created_by doesn't exist, just insert title, content, and post_time
-                $sql = "INSERT INTO announcements (title, content, post_time) 
-                        VALUES ('$title', '$content', '$time')";
+                $stmt = $conn->prepare("INSERT INTO announcements (title, content, post_time) VALUES (?, ?, ?)");
+                $stmt->bind_param('sss', $title, $content, $time);
             }
             
-            echo json_encode(insertRow($conn, $sql));
+            if ($stmt->execute()) {
+                echo json_encode(["message" => "Insert successful", "error" => false]);
+            } else {
+                echo json_encode(["message" => "Insert failed: " . $stmt->error, "error" => true]);
+            }
+            $stmt->close();
         }
 
         break;
     case "PUT":
         $type = $requestData['type'] ?? '';
+        
+        // CSRF Protection for PUT operations
+        $csrf_token = $requestData['csrf_token'] ?? '';
+        if (!validateCSRFToken($csrf_token)) {
+            http_response_code(403);
+            echo json_encode(["message" => "CSRF token validation failed", "error" => true]);
+            exit;
+        }
+        
         if ($type === "resident") {
             if (isset($requestData['id']) && !isset($requestData['name'])) {
                 $id = $requestData['id'];
-                $sql = "UPDATE notifications SET is_read = 1 WHERE id = '$id'";
-                echo json_encode(updateRow($conn, $sql));
+                if (!is_numeric($id)) {
+                    echo json_encode(["message" => "Invalid notification ID", "error" => true]);
+                    exit;
+                }
+                $stmt = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE id = ?");
+                $stmt->bind_param('i', $id);
+                if ($stmt->execute()) {
+                    echo json_encode(["message" => "Update successful", "error" => false]);
+                } else {
+                    echo json_encode(["message" => "Update failed: " . $stmt->error, "error" => true]);
+                }
+                $stmt->close();
             } else {
                 $id = $requestData['id'] ?? '';
                 $name = $requestData['name'] ?? '';
                 $plate = $requestData['plate'] ?? '';
                 $expiry = $requestData['expiry'] ?? '';
                 $is_blocked = $requestData['is_blocked'] ?? 0;
-                $sql = "UPDATE codes SET expiry='$expiry', intended_visitor='$name', plate_id='$plate', is_blocked='$is_blocked' WHERE id = '$id'";
                 
-                $result = $conn->query($sql);
-                if (!$result) {
-                    echo json_encode(["message" => "Update failed: " . $conn->error, "error" => true]);
+                if (!is_numeric($id)) {
+                    echo json_encode(["message" => "Invalid code ID", "error" => true]);
                     exit;
                 }
                 
+                $stmt = $conn->prepare("UPDATE codes SET expiry=?, intended_visitor=?, plate_id=?, is_blocked=? WHERE id = ?");
+                $stmt->bind_param('sssii', $expiry, $name, $plate, $is_blocked, $id);
+                
+                if (!$stmt->execute()) {
+                    echo json_encode(["message" => "Update failed: " . $stmt->error, "error" => true]);
+                    $stmt->close();
+                    exit;
+                }
+                $stmt->close();
+                
                 // Get the token for this code to regenerate QR
-                $token_sql = "SELECT token FROM codes WHERE id = '$id'";
-                $token_result = $conn->query($token_sql);
+                $tokenStmt = $conn->prepare("SELECT token FROM codes WHERE id = ?");
+                $tokenStmt->bind_param('i', $id);
+                $tokenStmt->execute();
+                $token_result = $tokenStmt->get_result();
                 if ($token_result && $token_result->num_rows > 0) {
                     $row = $token_result->fetch_assoc();
                     $token = $row['token'];
@@ -985,28 +1260,52 @@ switch ($method) {
                     // Regenerate QR code image
                     $qr_path = "qr/" . $token . ".png";
                     if (!file_exists("qr")) {
-                        mkdir("qr", 0777, true);
+                        mkdir("qr", 0755, true);
                     }
                     
                     // Generate QR code with token as content
                     QRcode::png($token, $qr_path, 'L', 4, 2);
                 }
+                $tokenStmt->close();
                 
                 echo json_encode(["message" => "Update successful", "error" => false]);
             }
         } elseif ($type === "toggle_exit_block") {
             $id = $requestData['id'] ?? '';
             $is_blocked = $requestData['is_blocked'] ?? 0;
-            $sql = "UPDATE codes SET is_blocked = '$is_blocked' WHERE id = '$id'";
-            echo json_encode(updateRow($conn, $sql));
+            
+            if (!is_numeric($id)) {
+                echo json_encode(["message" => "Invalid code ID", "error" => true]);
+                exit;
+            }
+            
+            $stmt = $conn->prepare("UPDATE codes SET is_blocked = ? WHERE id = ?");
+            $stmt->bind_param('ii', $is_blocked, $id);
+            if ($stmt->execute()) {
+                echo json_encode(["message" => "Update successful", "error" => false]);
+            } else {
+                echo json_encode(["message" => "Update failed: " . $stmt->error, "error" => true]);
+            }
+            $stmt->close();
         } elseif ($type === "update_resident") {
             if (isset($requestData['id']) && !isset($requestData['pass'])) {
                 $id = $requestData['id'];
                 $user = $requestData['user'] ?? '';
                 $room_code = $requestData['room_code'] ?? '';
-                // ...validation logic...
-                $sql = "UPDATE residents SET user='$user', room_code='$room_code' WHERE id = '$id'";
-                echo json_encode(updateRow($conn, $sql));
+                
+                if (!is_numeric($id) || empty($user) || empty($room_code)) {
+                    echo json_encode(["message" => "Invalid data provided for resident update", "error" => true]);
+                    exit;
+                }
+                
+                $stmt = $conn->prepare("UPDATE residents SET user=?, room_code=? WHERE id = ?");
+                $stmt->bind_param('ssi', $user, $room_code, $id);
+                if ($stmt->execute()) {
+                    echo json_encode(["message" => "Update successful", "error" => false]);
+                } else {
+                    echo json_encode(["message" => "Update failed: " . $stmt->error, "error" => true]);
+                }
+                $stmt->close();
             }
         } elseif ($type === "update_admin") {
             if (isset($requestData['id'])) {
@@ -1015,33 +1314,57 @@ switch ($method) {
                 $access_level = $requestData['access_level'] ?? 1;
 
                 // Optional validation
-                if (empty($user) || !ctype_digit(strval($access_level))) {
+                if (!is_numeric($id) || empty($user) || !ctype_digit(strval($access_level))) {
                     echo json_encode(["message" => "Invalid data provided for admin update", "error" => true]);
                     exit;
                 }
 
-                $sql = "UPDATE admins SET user='$user', access_level='$access_level' WHERE id = '$id'";
-                echo json_encode(updateRow($conn, $sql));
+                $stmt = $conn->prepare("UPDATE admins SET user=?, access_level=? WHERE id = ?");
+                $stmt->bind_param('sii', $user, $access_level, $id);
+                if ($stmt->execute()) {
+                    echo json_encode(["message" => "Update successful", "error" => false]);
+                } else {
+                    echo json_encode(["message" => "Update failed: " . $stmt->error, "error" => true]);
+                }
+                $stmt->close();
             }
         } elseif ($type === "update_security") {
             if (isset($requestData['id'])) {
                 $id = $requestData['id'];
                 $user = $requestData['user'] ?? '';
-                $sql = "UPDATE security SET user='$user' WHERE id='$id'";
-                echo json_encode(updateRow($conn, $sql));
+                
+                if (!is_numeric($id) || empty($user)) {
+                    echo json_encode(["message" => "Invalid data provided for security update", "error" => true]);
+                    exit;
+                }
+                
+                $stmt = $conn->prepare("UPDATE security SET user=? WHERE id=?");
+                $stmt->bind_param('si', $user, $id);
+                if ($stmt->execute()) {
+                    echo json_encode(["message" => "Update successful", "error" => false]);
+                } else {
+                    echo json_encode(["message" => "Update failed: " . $stmt->error, "error" => true]);
+                }
+                $stmt->close();
             }
         } elseif ($type === "edit_announcement") {
             $id = $requestData['id'] ?? '';
-            $title = $conn->real_escape_string($requestData['title'] ?? '');
-            $content = $conn->real_escape_string($requestData['content'] ?? '');
+            $title = $requestData['title'] ?? '';
+            $content = $requestData['content'] ?? '';
 
-            if (empty($id) || empty($title) || empty($content)) {
-                echo json_encode(["message" => "ID, title, and content are required", "error" => true]);
+            if (empty($id) || empty($title) || empty($content) || !is_numeric($id)) {
+                echo json_encode(["message" => "Valid ID, title, and content are required", "error" => true]);
                 exit;
             }
 
-            $sql = "UPDATE announcements SET title='$title', content='$content', post_time='$time' WHERE id='$id'";
-            echo json_encode(updateRow($conn, $sql));
+            $stmt = $conn->prepare("UPDATE announcements SET title=?, content=?, post_time=? WHERE id=?");
+            $stmt->bind_param('sssi', $title, $content, $time, $id);
+            if ($stmt->execute()) {
+                echo json_encode(["message" => "Update successful", "error" => false]);
+            } else {
+                echo json_encode(["message" => "Update failed: " . $stmt->error, "error" => true]);
+            }
+            $stmt->close();
         }
 
         break;
@@ -1049,11 +1372,34 @@ switch ($method) {
         $type = $requestData['type'] ?? '';
         $id   = $requestData['id'] ?? '';
         $fetch = $requestData['fetch'] ?? '';
+        
+        // CSRF Protection for DELETE operations
+        $csrf_token = $requestData['csrf_token'] ?? '';
+        if (!validateCSRFToken($csrf_token)) {
+            http_response_code(403);
+            echo json_encode(["message" => "CSRF token validation failed", "error" => true]);
+            exit;
+        }
 
         if ($type === "resident") {
-            $sql = "DELETE FROM codes WHERE id = '$id'";
-            echo json_encode(deleteRow($conn, $sql));
+            if (!is_numeric($id)) {
+                echo json_encode(["message" => "Invalid code ID", "error" => true]);
+                exit;
+            }
+            $stmt = $conn->prepare("DELETE FROM codes WHERE id = ?");
+            $stmt->bind_param('i', $id);
+            if ($stmt->execute()) {
+                echo json_encode(["message" => "Delete successful", "error" => false]);
+            } else {
+                echo json_encode(["message" => "Delete failed: " . $stmt->error, "error" => true]);
+            }
+            $stmt->close();
         } elseif ($type === "admin") {
+            if (!is_numeric($id)) {
+                echo json_encode(["message" => "Invalid ID", "error" => true]);
+                exit;
+            }
+            
             if ($fetch === 'admin') {
                 // Prevent deleting your own account
                 if ($id == $_SESSION['id']) {
@@ -1063,19 +1409,29 @@ switch ($method) {
                     ]);
                     break;
                 }
-                $sql = "DELETE FROM admins WHERE id = '$id'";
+                $stmt = $conn->prepare("DELETE FROM admins WHERE id = ?");
             } elseif ($fetch === 'resident') {
-                $sql = "DELETE FROM residents WHERE id = '$id'";
+                $stmt = $conn->prepare("DELETE FROM residents WHERE id = ?");
             } elseif ($fetch === 'security') {
-                $sql = "DELETE FROM security WHERE id = '$id'";
+                $stmt = $conn->prepare("DELETE FROM security WHERE id = ?");
             } elseif ($fetch === 'announcement') {
-                $sql = "DELETE FROM announcements WHERE id = '$id'";
+                $stmt = $conn->prepare("DELETE FROM announcements WHERE id = ?");
             } elseif ($fetch === 'invite_code') {
-                $sql = "DELETE FROM invite_codes WHERE id = '$id'";
+                $stmt = $conn->prepare("DELETE FROM invite_codes WHERE id = ?");
             } elseif ($fetch === 'blacklist') {
-                $sql = "DELETE FROM blacklist WHERE id = '$id'";
+                $stmt = $conn->prepare("DELETE FROM blacklist WHERE id = ?");
+            } else {
+                echo json_encode(["message" => "Invalid fetch type", "error" => true]);
+                exit;
             }
-            echo json_encode(deleteRow($conn, $sql));
+            
+            $stmt->bind_param('i', $id);
+            if ($stmt->execute()) {
+                echo json_encode(["message" => "Delete successful", "error" => false]);
+            } else {
+                echo json_encode(["message" => "Delete failed: " . $stmt->error, "error" => true]);
+            }
+            $stmt->close();
         }
         break;
     default:

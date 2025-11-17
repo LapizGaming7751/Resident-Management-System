@@ -6,35 +6,45 @@ if (!isset($_SESSION['type']) || $_SESSION['type'] !== 'security') {
     exit;
 }
 ?>
-<html>
-    <head>
-        <link rel="icon" type="image/x-icon" href="../ico/house-icon.ico">
-        <title>View Logs</title>
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="../ico/house-icon.ico">
+    <title>View Logs</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="../css.css">
-    </head>
-    <body>
-        <?php include('../topbar.php'); ?>
-        <div class="main-content" style="margin-left: 250px; min-height: calc(100vh - 70px); padding-top: 20px;">
-            <!-- Sidebar -->
-            <?php $current_page = 'logs'; include 'sidebar.php'; ?>
-            <!-- Main Card -->
-            <div class="container d-flex justify-content-center align-items-center" style="min-height: calc(100vh - 90px);">
-                <div class="card p-4" style="max-width: 1100px; width: 100%;">
+</head>
+<body>
+    <?php include('../topbar.php'); ?>
+    
+    <div class="main-content">
+        <!-- Sidebar -->
+        <?php $current_page = 'logs'; include 'sidebar.php'; ?>
+        <!-- Main Card -->
+        <div class="container-fluid p-3 p-md-4">
+            <div class="row justify-content-center">
+                <div class="col-12">
+                    <div class="card p-3 p-md-4">
                     <h1 class="mb-4 text-center">View Logs</h1>
-                    <div class="mb-3 d-flex align-items-center" style="gap:0;">
-                        <select id="logField" class="form-select w-auto" style="border-top-right-radius:0; border-bottom-right-radius:0; height:38px; padding-top:6px; padding-bottom:6px;">
-                            <option value="all">All Fields</option>
-                            <option value="id">ID</option>
-                            <option value="token">Token</option>
-                            <option value="intended_visitor">Intended Visitor</option>
-                            <option value="scan_time">Scan Time</option>
-                            <option value="scan_type">Scan Type</option>
-                            <option value="scanner_username">Responsible Scanner</option>
-                            <option value="created_by_username">QR Creator</option>
-                        </select>
-                        <input type="text" id="logSearch" class="form-control" placeholder="Search logs..." style="border-top-left-radius:0; border-bottom-left-radius:0; height:38px;">
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-3">
+                            <select id="logField" class="form-select">
+                                <option value="all">All Fields</option>
+                                <option value="id">ID</option>
+                                <option value="token">Token</option>
+                                <option value="intended_visitor">Intended Visitor</option>
+                                <option value="scan_time">Scan Time</option>
+                                <option value="scan_type">Scan Type</option>
+                                <option value="scanner_username">Responsible Scanner</option>
+                                <option value="created_by_username">QR Creator</option>
+                            </select>
+                        </div>
+                        <div class="col-md-9">
+                            <input type="text" id="logSearch" class="form-control" placeholder="Search logs...">
+                        </div>
                     </div>
                     <div class="table-responsive">
                         <table class="table table-bordered table-striped">
@@ -123,5 +133,8 @@ if (!isset($_SESSION['type']) || $_SESSION['type'] !== 'security') {
                 fieldSelect.addEventListener('change', filterLogs);
             });
         </script>
+        
+        <!-- Mobile JavaScript -->
+        <script src="../js/mobile.js"></script>
     </body>
 </html>
