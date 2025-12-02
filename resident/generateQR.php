@@ -1,76 +1,83 @@
-<?php session_start(); ?>
 <?php
+require_once '../config.php';
+
+configureSecureSession();
+
 if (!isset($_SESSION['id'])) {
     echo '<div style="color:red;text-align:center;margin-top:2em;">Error: Resident session not found. Please log in again.</div>';
     exit;
 }
 ?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="../ico/house-icon.ico">
+    <title>Generate New Invite</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="../css.css?v=1">
+</head>
+<body>
+    <?php include('../topbar.php'); ?>
+    <div class="main-content" style="min-height: calc(100vh - 70px); padding-top: 20px;">
+        <?php $current_page = 'generate'; include 'sidebar.php'; ?>
 
-<html>
-    <head>
-        <link rel="icon" type="image/x-icon" href="../ico/house-icon.ico">
-        <title>Add new Visitor</title>
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="../css.css">
-    </head>
-    <body>
-        <?php include('../topbar.php'); ?>
-        <div class="main-content" style="margin-left: 250px; min-height: calc(100vh - 70px); padding-top: 20px;">
-            <!-- Sidebar -->
-            <?php $current_page = 'generate'; include 'sidebar.php'; ?>
-            <!-- Main Card -->
-            <div class="container d-flex justify-content-center align-items-center" style="min-height: calc(100vh - 90px);">
-                <div class="card p-4 d-flex flex-column align-items-center" style="max-width: 400px; width: 100%;">
-                <h1 class="mb-4 text-center">Generate New Invite</h1>
-                <form id="generationForm">
+        <div class="container d-flex justify-content-center align-items-center" style="min-height: calc(100vh - 90px);">
+            <div class="card p-4 w-100" style="max-width: 500px;">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h1 class="h4 mb-1">Generate New Invite</h1>
+                        <p class="text-muted mb-0">Create a QR code for your visitor</p>
+                    </div>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="window.location.href='manage.php'">
+                        <i class="bi bi-arrow-left"></i> Back
+                    </button>
+                </div>
+
+                <form id="generationForm" class="needs-validation" novalidate>
                     <div class="mb-3">
                         <label for="guest_name" class="form-label">Guest Name</label>
-                        <input type="text" name="guest_name" id="guest_name" class="form-control" required>
+                        <input type="text" name="guest_name" id="guest_name" class="form-control" placeholder="Enter guest full name" required>
+                        <div class="invalid-feedback">Please enter the guest's name.</div>
                     </div>
                     <div class="mb-3">
-                        <label for="plate" class="form-label">Car Plate</label>
-                        <input type="text" name="plate" id="plate" class="form-control">
+                        <label for="plate" class="form-label">Car Plate (Optional)</label>
+                        <input type="text" name="plate" id="plate" class="form-control" placeholder="ABC1234">
                     </div>
-                    <div class="mb-3">
-                        <label for="expiry" class="form-label">Visiting Date</label>
+                    <div class="mb-4">
+                        <label for="expiry" class="form-label">Visiting Date & Time</label>
                         <input type="datetime-local" name="expiry" id="expiry" class="form-control" required>
+                        <div class="invalid-feedback">Please select a visiting date and time.</div>
                     </div>
-                    <div class="mb-3">
-                        <label for="email" class="form-label">Email Address (Optional)</label>
-                        <input type="email" name="email" id="email" class="form-control" placeholder="Enter email to send QR code">
-                        <div class="form-text">If provided, the QR code will be sent to this email address</div>
-                    </div>
-                    <div class="mb-3">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="is_blocked" id="is_blocked" value="1">
-                            <label class="form-check-label" for="is_blocked">
-                                Block Exit (Visitor can enter but cannot exit until unblocked)
-                            </label>
-                        </div>
-                    </div>
-                    <button type="submit" class="btn btn-primary w-100 mb-2">Generate QR</button>
+                    <button type="submit" class="btn btn-primary w-100">Generate QR</button>
                 </form>
             </div>
         </div>
-    </body>
+    </div>
 
     <script>
-        const API_URL = 'https://siewyaoying.synergy-college.org/ResidentManagementSystem/api.php';
+        const API_URL = '../api.php';
+        const RESIDENT_ID = <?= (int)$_SESSION['id'] ?>;
 
-        document.getElementById("generationForm").addEventListener("submit", e =>{
+        document.getElementById("generationForm").addEventListener("submit", e => {
             e.preventDefault();
 
-            const name = document.getElementById('guest_name').value;
-            const plate = document.getElementById('plate').value;
+            const form = e.target;
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
+                return;
+            }
+
+            const name = document.getElementById('guest_name').value.trim();
+            const plate = document.getElementById('plate').value.trim();
             const expiry = document.getElementById('expiry').value;
-            const email = document.getElementById('email').value.trim();
-            const is_blocked = document.getElementById('is_blocked').checked ? 1 : 0;
 
             fetch(API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 'type':"resident", 'created_by':<?=$_SESSION['id']?>, name, plate, expiry, email, is_blocked })
+                body: JSON.stringify({ type: "resident", created_by: RESIDENT_ID, name, plate, expiry })
             })
             .then(response => {
                 if (!response.ok) {
@@ -79,25 +86,16 @@ if (!isset($_SESSION['id'])) {
                 return response.json();
             })
             .then(data => {
-                if(!data.error && data.id && data.token){
-                    let message = `QR Created!\nID: ${data.id}\nToken: ${data.token}\nVisitor: ${name}\nCar Plate: ${plate}\nExpiry: ${expiry}`;
-                    if (data.email_sent) {
-                        message += `\n\nQR code has been sent to: ${email}`;
-                    } else if (email && !data.email_sent) {
-                        message += `\n\nNote: Email could not be sent to ${email}. Please share the QR code manually.`;
-                    }
-                    alert(message);
-                } else {
-                    alert(data.message || 'QR creation failed.');
-                }
-                if(!data.error){
+                alert(data.message || 'QR generated successfully.');
+                if (!data.error) {
                     window.location.href = "manage.php";
                 }
             })
             .catch(error => {
-                alert('Error creating QR: ' + error);
                 console.error('Error creating QR:', error);
+                alert('Unable to create QR right now. Please try again.');
             });
-        })
+        });
     </script>
+</body>
 </html>

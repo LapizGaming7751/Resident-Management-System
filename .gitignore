@@ -1,2 +1,11 @@
 qr/
 walkie/uploads
+config.php
+*.log
+email_errors.log
+.env
+.env.local
+.env.production
+.env.staging
+/tmp/
+rate_limit_*.txt

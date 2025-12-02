@@ -1,3 +1,8 @@
+<?php
+// Include secure configuration and set security headers
+require_once 'config.php';
+setSecurityHeaders();
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>

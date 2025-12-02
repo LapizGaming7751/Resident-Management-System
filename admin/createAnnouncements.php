@@ -1,11 +1,17 @@
-<?php 
-session_start();
+<?php
+// Include secure configuration
+require_once '../config.php';
 
-// Check if user is logged in
-if (!isset($_SESSION['id'])) {
-    header('Location: ../login.php');
+configureSecureSession();
+
+// Check if user is logged in as admin
+if (!isset($_SESSION['id']) || $_SESSION['type'] !== 'admin') {
+    echo '<div style="color:red;text-align:center;margin-top:2em;">Error: Admin session not found. Please log in again.</div>';
     exit;
 }
+
+// Generate CSRF token
+$csrf_token = generateCSRFToken();
 ?>
 
 <html>
@@ -16,21 +22,14 @@ if (!isset($_SESSION['id'])) {
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="../css.css">
     <style>
-        input[type="text"], textarea {
-            width: 100%;
-        }
         textarea {
             resize: vertical;
-            min-height: 300px;
+            min-height: 200px;
         }
-        .card {
-            flex-grow: 1;
-            max-width: 900px;
-            width: 100%;
-        }
-        .main-container {
-            display: flex;
-            gap: 20px;
+        @media (min-width: 768px) {
+            textarea {
+                min-height: 300px;
+            }
         }
         .btn:disabled {
             opacity: 0.6;
@@ -41,34 +40,48 @@ if (!isset($_SESSION['id'])) {
 <body>
 
 <?php include('../topbar.php'); ?>
-<div class="container mt-3 d-flex justify-content-center align-items-start">
-    <div class="card p-4 flex-grow-1">
-        <?php include 'sidebar.php'; ?>
-        <h2>Create Announcement</h2>
+
+<div class="main-content">
+    <!-- Sidebar -->
+    <?php $current_page = 'create_announcement'; include 'sidebar.php'; ?>
+    
+    <!-- Main Card -->
+    <div class="container-fluid p-3 p-md-4">
+        <div class="row justify-content-center">
+            <div class="col-12 col-lg-10 col-xl-8">
+                <div class="card p-3 p-md-4">
+                    <h2 class="h4 h3-md mb-3">Create Announcement</h2>
         
         <div id="error-message" class="alert alert-danger" style="display: none;"></div>
         <div id="success-message" class="alert alert-success" style="display: none;"></div>
         
-        <form id="createAnnouncementForm" style="width: 100%;">
-            <div class="mb-3">
-                <label for="title" class="form-label">Announcement Title</label>
-                <input type="text" name="title" id="title" class="form-control" placeholder="Enter announcement title" required style="width: 100%;" />
+                    <form id="createAnnouncementForm">
+                        <div class="mb-3">
+                            <label for="title" class="form-label">Announcement Title</label>
+                            <input type="text" name="title" id="title" class="form-control" placeholder="Enter announcement title" required />
+                        </div>
+                        <div class="mb-3">
+                            <label for="content" class="form-label">Announcement Content</label>
+                            <textarea name="content" id="content" class="form-control" placeholder="Write your announcement here..." required></textarea>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button type="submit" id="submit-btn" class="btn btn-primary">
+                                <span id="submit-text">Create Announcement</span>
+                                <span id="submit-loading" class="spinner-border spinner-border-sm ms-2" style="display: none;"></span>
+                            </button>
+                            <a href="announcements.php" class="btn btn-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
             </div>
-            <div class="mb-3">
-                <label for="content" class="form-label">Announcement Content</label>
-                <textarea name="content" id="content" class="form-control" placeholder="Write your announcement here..." required style="width: 100%; min-height: 300px;"></textarea>
-            </div>
-            <button type="submit" id="submit-btn" class="btn btn-primary w-100 mb-2">
-                <span id="submit-text">Create Announcement</span>
-                <span id="submit-loading" class="spinner-border spinner-border-sm ms-2" style="display: none;"></span>
-            </button>
-            <a href="announcements.php" class="btn btn-secondary w-100">Cancel</a>
-        </form>
+        </div>
     </div>
 </div>
 
 <script>
-const API_URL = 'https://siewyaoying.synergy-college.org/ResidentManagementSystem/api.php';
+// Use relative URL to avoid hardcoded URLs
+const API_URL = '../api.php';
+const CSRF_TOKEN = '<?= $csrf_token ?>';
 
 // Debug information
 console.log('=== CREATE ANNOUNCEMENT DEBUG ===');
@@ -147,7 +160,8 @@ document.getElementById("createAnnouncementForm").addEventListener("submit", asy
     const payload = { 
         type: 'create_announcement', 
         title: title, 
-        content: content 
+        content: content,
+        csrf_token: CSRF_TOKEN
     };
 
     console.log('=== API REQUEST ===');

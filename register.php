@@ -32,6 +32,13 @@
                     <div class="form-text">Must match the email address the invite was sent to</div>
                 </div>
                 
+                <div class="mb-3" id="room_code_field">
+                    <label for="room_code" class="form-label">Room Code (for Residents):</label>
+                    <input type="text" name="room_code" id="room_code" class="form-control" 
+                           placeholder="e.g., 13-10-B6"/>
+                    <div class="form-text">Enter your room/unit number (leave blank if you're security)</div>
+                </div>
+                
                 <div class="mb-3">
                     <label for="user" class="form-label">Username:</label>
                     <input type="text" name="user" id="user" class="form-control" 
@@ -62,19 +69,23 @@
     </div>
 
     <script>
-        const API_URL = 'https://siewyaoying.synergy-college.org/ResidentManagementSystem/api.php';
+        const API_URL = 'api.php';
+        let inviteUserType = null;
 
         // Pre-fill form fields from URL parameters
         document.addEventListener('DOMContentLoaded', function() {
             const urlParams = new URLSearchParams(window.location.search);
             const inviteCode = urlParams.get('invite_code');
             const email = urlParams.get('email');
+            const roomCode = urlParams.get('room_code');
             
             if (inviteCode) {
                 document.getElementById('invite_code').value = inviteCode;
                 // Make the invite code field read-only if it came from URL
                 document.getElementById('invite_code').readOnly = true;
                 document.getElementById('invite_code').style.backgroundColor = '#f8f9fa';
+                // Check invite type
+                checkInviteType(inviteCode);
             }
             
             if (email) {
@@ -84,6 +95,10 @@
                 document.getElementById('email').style.backgroundColor = '#f8f9fa';
             }
             
+            if (roomCode) {
+                document.getElementById('room_code').value = roomCode;
+            }
+            
             // Show a message if fields were pre-filled
             if (inviteCode || email) {
                 const messageDiv = document.createElement('div');
@@ -91,7 +106,35 @@
                 messageDiv.innerHTML = '<i class="bi bi-info-circle"></i> Your invite code and email have been pre-filled from your invitation link.';
                 document.querySelector('.card').insertBefore(messageDiv, document.getElementById('registerForm'));
             }
+            
+            // Get CSRF token
+            fetch(API_URL + '?type=get_csrf_token', {
+                method: 'GET',
+                credentials: 'same-origin'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.csrf_token) {
+                    window.csrfToken = data.csrf_token;
+                }
+            })
+            .catch(error => {
+                console.error('Error getting CSRF token:', error);
+            });
         });
+
+        // Check invite type when invite code is entered
+        document.getElementById('invite_code').addEventListener('blur', function() {
+            const code = this.value.trim();
+            if (code) {
+                checkInviteType(code);
+            }
+        });
+
+        function checkInviteType(code) {
+            // For now, we'll show room code field when submitting
+            // You could add an API endpoint to check invite type without consuming it
+        }
 
         document.getElementById("registerForm").addEventListener("submit", e => {
             e.preventDefault();
@@ -101,6 +144,7 @@
             const user = document.getElementById('user').value.trim();
             const pass = document.getElementById('pass').value;
             const confirm_pass = document.getElementById('confirm_pass').value;
+            const room_code = document.getElementById('room_code').value.trim();
             
             // Validation
             if (pass !== confirm_pass) {
@@ -114,23 +158,53 @@
             }
 
             const type = "register_with_invite";
+            const payload = { 
+                type, 
+                invite_code, 
+                email, 
+                user, 
+                pass, 
+                csrf_token: window.csrfToken || '' 
+            };
+            
+            // Add room_code if provided
+            if (room_code) {
+                payload.room_code = room_code;
+            }
+            
             fetch(API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ type, invite_code, email, user, pass })
+                credentials: 'same-origin',
+                body: JSON.stringify({ 
+                    type, 
+                    invite_code, 
+                    email, 
+                    user, 
+                    pass, 
+                    csrf_token: window.csrfToken || '' 
+                })
             })
             .then(response => {
                 if (!response.ok) {
                     throw new Error('Registration failed');
                 }
-                return response.json();
+                return response.text(); // Get raw text first
             })
-            .then(data => {
-                if (!data.error) {
-                    alert("Registration successful! You can now log in with your credentials.");
-                    window.location.href = "index.php";
-                } else {
-                    alert(data.message);
+            .then(text => {
+                console.log('Raw response:', text);
+                try {
+                    const data = JSON.parse(text);
+                    if (!data.error) {
+                        alert("Registration successful! You can now log in with your credentials.");
+                        window.location.href = "index.php";
+                    } else {
+                        alert(data.message);
+                    }
+                } catch (e) {
+                    console.error('JSON parse error:', e);
+                    console.error('Response was:', text);
+                    alert('Server error: Invalid response format. Check console for details.');
                 }
             })
             .catch(error => {

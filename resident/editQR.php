@@ -1,4 +1,17 @@
-<?php session_start(); ?>
+<?php
+// Include secure configuration
+require_once '../config.php';
+
+configureSecureSession();
+
+if (!isset($_SESSION['id'])) {
+    echo '<div style="color:red;text-align:center;margin-top:2em;">Error: Resident session not found. Please log in again.</div>';
+    exit;
+}
+
+// Generate CSRF token
+$csrf_token = generateCSRFToken();
+?>
 
 <html>
     <head>
@@ -10,7 +23,7 @@
     </head>
     <body>
         <?php include('../topbar.php'); ?>
-        <div class="main-content" style="margin-left: 250px; min-height: calc(100vh - 70px); padding-top: 20px;">
+        <div class="main-content" style="min-height: calc(100vh - 70px); padding-top: 20px;">
             <!-- Sidebar -->
             <?php $current_page = 'generate'; include 'sidebar.php'; ?>
             <!-- Main Card -->
@@ -51,37 +64,57 @@
     </body>
 
     <script>
-        const API_URL = 'https://siewyaoying.synergy-college.org/ResidentManagementSystem/api.php';
+        // Use relative URL to avoid hardcoded URLs
+        const API_URL = '../api.php';
+        const CSRF_TOKEN = '<?= $csrf_token ?>';
 
-        document.getElementById("editForm").addEventListener("submit", e =>{
-            e.preventDefault();
+        // Wait for DOM to be fully loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById("editForm");
+            if (!form) {
+                console.error('Form element not found');
+                return;
+            }
 
-            const id = <?=$_GET['id']?>
-            const name = document.getElementById('guest_name').value;
-            const plate = document.getElementById('plate').value;
-            const expiry = document.getElementById('expiry').value;
-            const is_blocked = document.getElementById('is_blocked').checked ? 1 : 0;
+            form.addEventListener("submit", e => {
+                e.preventDefault();
 
-            fetch(API_URL, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 'type':"resident", id, 'created_by':<?=$_SESSION['id']?>, name, plate, expiry, is_blocked })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Failed to edit QR');
-                }
-                return response.json();
-            })
-            .then(data => {
-                alert(data.message);
-                if(!data.error){
-                    window.location.href = "manage.php";
-                }
-            })
-            .catch(error => {
-                console.error('Error editting QR:', error);
+                const id = <?=$_GET['id']?>;
+                const name = document.getElementById('guest_name').value;
+                const plate = document.getElementById('plate').value;
+                const expiry = document.getElementById('expiry').value;
+                const is_blocked = document.getElementById('is_blocked').checked ? 1 : 0;
+
+                fetch(API_URL, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        'type': "resident", 
+                        'id': id, 
+                        'created_by': <?=$_SESSION['id']?>, 
+                        'name': name, 
+                        'plate': plate, 
+                        'expiry': expiry, 
+                        'is_blocked': is_blocked,
+                        'csrf_token': CSRF_TOKEN
+                    })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to edit QR');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    alert(data.message);
+                    if(!data.error){
+                        window.location.href = "manage.php";
+                    }
+                })
+                .catch(error => {
+                    console.error('Error editing QR:', error);
+                });
             });
-        })
+        });
     </script>
 </html>

@@ -1,7 +1,23 @@
-<?php session_start(); ?>
+<?php
+// Include secure configuration
+require_once '../config.php';
 
-<html>
+configureSecureSession();
+
+if (!isset($_SESSION['id']) || $_SESSION['type'] !== 'admin') {
+    echo '<div style="color:red;text-align:center;margin-top:2em;">Error: Admin session not found. Please log in again.</div>';
+    exit;
+}
+
+// Generate CSRF token for admin announcements
+$csrf_token = generateCSRFToken();
+?>
+
+<!DOCTYPE html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/x-icon" href="../ico/house-icon.ico">
     <title>Admin Announcements</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -31,11 +47,12 @@
 </head>
 <body>
     <?php include('../topbar.php'); ?>
-    <div class="main-content" style="margin-left: 250px; min-height: calc(100vh - 70px); padding-top: 20px;">
+    
+    <div class="main-content">
         <!-- Sidebar -->
         <?php $current_page = 'announcements'; include 'sidebar.php'; ?>
         
-        <div class="container-fluid" style="padding: 20px;">
+        <div class="container-fluid p-3 p-md-4">
             <div class="row">
                 <div class="col-12">
                     <div class="card p-4">
@@ -57,7 +74,9 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const API_URL = 'https://siewyaoying.synergy-college.org/ResidentManagementSystem/api.php';
+    // Use relative URL to avoid hardcoded URLs
+    const API_URL = '../api.php';
+    const CSRF_TOKEN = '<?= $csrf_token ?>';
     const searchInput = document.getElementById('announcement-search');
     const container = document.getElementById('announcements');
     const createBtn = document.getElementById('create-announcement');
@@ -145,7 +164,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     type: 'admin', 
                     fetch: 'announcement', 
                     id: id, 
-                    action: 'delete' 
+                    action: 'delete',
+                    csrf_token: CSRF_TOKEN
                 })
             });
             const result = await res.json();
@@ -167,5 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 
+<!-- Mobile JavaScript -->
+<script src="../js/mobile.js"></script>
 </body>
 </html>

@@ -1,9 +1,16 @@
 <?php
-session_start();
+// Include secure configuration
+require_once '../config.php';
+
+configureSecureSession();
+
 if (!isset($_SESSION['type']) || $_SESSION['type'] !== 'security') {
-    header('Location: login.php');
+    echo '<div style="color:red;text-align:center;margin-top:2em;">Error: Security session not found. Please log in again.</div>';
     exit;
 }
+
+// Generate CSRF token for chat
+$csrf_token = generateCSRFToken();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -19,22 +26,42 @@ if (!isset($_SESSION['type']) || $_SESSION['type'] !== 'security') {
 <body>
     <?php include('../topbar.php'); ?>
     
-    <!-- Mobile Sidebar Toggle Button -->
-    <button class="sidebar-toggle d-md-none" onclick="toggleSidebar()">
-        <i class="bi bi-list"></i>
-    </button>
-    
-    <div class="main-content" style="margin-left: 250px; min-height: calc(100vh - 70px); padding-top: 20px;">
+    <div class="main-content">
         <!-- Sidebar -->
         <?php $current_page = 'chat'; include 'sidebar.php'; ?>
         <!-- Main Card -->
-        <div class="container d-flex justify-content-center align-items-center" style="min-height: calc(100vh - 90px);">
-            <div class="card p-4 w-100" style="max-width: 900px;">
+        <div class="container-fluid p-3 p-md-4">
+            <div class="row justify-content-center">
+                <div class="col-12 col-lg-10 col-xl-8">
+                    <div class="card p-3 p-md-4">
                 <div class="row">
                     <div class="col-md-4 mb-3 mb-md-0">
                         <div class="card p-3">
                             <input type="text" class="form-control mb-3" id="searchResident" placeholder="Search residents...">
-                            <div class="user-list" id="residentList"></div>
+                            <?php
+                                // Server-side render initial list of residents who have chatted with this security
+                                $conn = getDatabaseConnection();
+                                $stmt = $conn->prepare("SELECT DISTINCT r.id, r.user, r.room_code FROM residents r JOIN messages m ON ((m.sender_id = ? AND m.receiver_id = r.id) OR (m.receiver_id = ? AND m.sender_id = r.id)) ORDER BY r.user ASC");
+                                $stmt->bind_param("ii", $_SESSION['id'], $_SESSION['id']);
+                                $resHtml = '<div class="user-list" id="residentList">';
+                                if ($stmt->execute()) {
+                                    $result = $stmt->get_result();
+                                    if ($result->num_rows > 0) {
+                                        while ($row = $result->fetch_assoc()) {
+                                            $name = htmlspecialchars($row['user'], ENT_QUOTES);
+                                            $room = htmlspecialchars($row['room_code'] ?? '', ENT_QUOTES);
+                                            $resHtml .= "<div class=\"user-item\" onclick=\"selectResident({$row['id']}, '{$name}', event)\">{$name} ({$room})</div>";
+                                        }
+                                    } else {
+                                        $resHtml .= '<div class="text-muted">No residents have messaged you yet.</div>';
+                                    }
+                                } else {
+                                    $resHtml .= '<div class="text-danger">Failed to load residents.</div>';
+                                }
+                                $resHtml .= '</div>';
+                                echo $resHtml;
+                                $stmt->close();
+                            ?>
                         </div>
                     </div>
                     <div class="col-md-8">
@@ -55,18 +82,22 @@ if (!isset($_SESSION['type']) || $_SESSION['type'] !== 'security') {
         let currentResidentId = null;
         let currentResidentName = null;
 
-        // Fetch and display resident list
+        // Fetch and display residents who have chatted with this security
         function loadResidents() {
-            fetch('../api.php?type=security&fetch=resident_list')
+            fetch(`../api.php?type=chat&fetch=chatted_residents&security_id=<?=$_SESSION['id']?>`)
                 .then(response => response.json())
                 .then(residents => {
                     const residentList = document.getElementById('residentList');
                     residentList.innerHTML = '';
+                    if (!Array.isArray(residents) || residents.length === 0) {
+                        residentList.innerHTML = '<div class="text-muted">No residents have messaged you yet.</div>';
+                        return;
+                    }
                     residents.forEach(resident => {
                         const div = document.createElement('div');
                         div.className = 'user-item';
-                        div.textContent = `${resident.user} (${resident.room_code})`;
-                        div.onclick = () => selectResident(resident.id, resident.user);
+                        div.textContent = `${resident.user} (${resident.room_code ?? ''})`;
+                        div.addEventListener('click', (e) => selectResident(resident.id, resident.user, e));
                         residentList.appendChild(div);
                     });
                     
@@ -75,33 +106,37 @@ if (!isset($_SESSION['type']) || $_SESSION['type'] !== 'security') {
                     if (searchInput.value) {
                         filterResidents(searchInput.value);
                     }
-                });
+                }).catch(err => console.error('Failed to load residents', err));
         }
 
         // Select a resident to chat with
-        function selectResident(id, name) {
+        function selectResident(id, name, event) {
             currentResidentId = id;
             currentResidentName = name;
             document.querySelectorAll('.user-item').forEach(item => {
                 item.classList.remove('active');
             });
-            event.target.classList.add('active');
+            try {
+                const el = event && event.currentTarget ? event.currentTarget : event && event.target ? event.target : null;
+                if (el) el.classList.add('active');
+            } catch (e) {}
             loadMessages();
         }
 
         // Load messages for selected resident
         function loadMessages() {
             if (!currentResidentId) return;
-            fetch(`../api.php?type=security&fetch=messages&resident_id=${currentResidentId}`)
+            fetch(`../api.php?type=chat&fetch=messages&security_id=<?=$_SESSION['id']?>&resident_id=${currentResidentId}`)
                 .then(response => response.json())
                 .then(messages => {
                     const chatMessages = document.getElementById('chatMessages');
                     chatMessages.innerHTML = '';
                     messages.forEach(message => {
+                        const senderType = (message.sender_type) ? (message.sender_type === 'security' ? 'security' : 'resident') : ((message.sender_id == <?=$_SESSION['id']?>) ? 'security' : 'resident');
                         const div = document.createElement('div');
-                        div.className = `message ${message.sender_type === 'security' ? 'sent' : 'received'}`;
+                        div.className = `message ${senderType === 'security' ? 'sent' : 'received'}`;
                         let senderLabel = '';
-                        if (message.sender_type === 'security') {
+                        if (senderType === 'security') {
                             senderLabel = '<span style="font-size:1.1rem;font-weight:700;color:#fff;background:#007bff;padding:2px 8px;border-radius:6px;">You</span> ';
                         } else {
                             senderLabel = '<span style="font-size:1.1rem;font-weight:700;color:#007bff;background:#e0f7ff;padding:2px 8px;border-radius:6px;">Resident</span> ';
@@ -110,7 +145,7 @@ if (!isset($_SESSION['type']) || $_SESSION['type'] !== 'security') {
                         chatMessages.appendChild(div);
                     });
                     chatMessages.scrollTop = chatMessages.scrollHeight;
-                });
+                }).catch(err => console.error('Failed to load messages', err));
         }
 
         // Send a message
@@ -132,7 +167,8 @@ if (!isset($_SESSION['type']) || $_SESSION['type'] !== 'security') {
                     sender_type: 'security',
                     receiver_id: currentResidentId,
                     receiver_type: 'resident',
-                    message: message
+                    message: message,
+                    csrf_token: '<?= $csrf_token ?>'
                 })
             })
             .then(response => response.json())

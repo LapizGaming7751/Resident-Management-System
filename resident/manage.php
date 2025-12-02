@@ -1,4 +1,17 @@
-<?php session_start(); ?>
+<?php
+// Include secure configuration
+require_once '../config.php';
+
+configureSecureSession();
+
+if (!isset($_SESSION['id'])) {
+    echo '<div style="color:red;text-align:center;margin-top:2em;">Error: Resident session not found. Please log in again.</div>';
+    exit;
+}
+
+// Generate CSRF token for resident management
+$csrf_token = generateCSRFToken();
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -13,40 +26,37 @@
 <body>
     <?php include('../topbar.php'); ?>
     
-    <!-- Mobile Sidebar Toggle Button -->
-    <button class="sidebar-toggle d-md-none" onclick="toggleSidebar()">
-        <i class="bi bi-list"></i>
-    </button>
-    
-    <div class="main-content" style="margin-left: 250px; min-height: calc(100vh - 70px); padding-top: 20px;">
+    <div class="main-content">
         <!-- Sidebar -->
         <?php $current_page = 'manage'; include 'sidebar.php'; ?>
-            <!-- Main Card -->
-            <div class="container-fluid" style="padding: 20px;">
-                <div class="row">
-                    <div class="col-12">
-                        <div class="card p-4 mb-4">
-                            <h2 class="mt-3">Notifications</h2>
-                            <div id="notifications" class="mb-4"></div>
-                        </div>
+        <!-- Main Card -->
+        <div class="container-fluid p-3 p-md-4">
+            <div class="row g-3 g-md-4">
+                <div class="col-12">
+                    <div class="card p-3 p-md-4 mb-3 mb-md-4">
+                        <h2 class="h4 h3-md mb-3">Notifications</h2>
+                        <div id="notifications" class="mb-3 mb-md-4"></div>
                     </div>
                 </div>
-                <div class="row">
-                    <div class="col-12">
-                        <div class="card p-4">
-                            <h2>Manage Invites</h2>
-                            <div id="qr"></div>
-                        </div>
+            </div>
+            <div class="row g-3 g-md-4">
+                <div class="col-12">
+                    <div class="card p-3 p-md-4">
+                        <h2 class="h4 h3-md mb-3">Manage Invites</h2>
+                        <div id="qr" class="row g-2 g-md-3"></div>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
 
         
     </body>
 
     <script>
-        const API_URL = 'https://siewyaoying.synergy-college.org/ResidentManagementSystem/api.php';
+        // Use relative URL to avoid hardcoded URLs
+        const API_URL = '../api.php';
+        const CSRF_TOKEN = '<?= $csrf_token ?>';
 
         async function getNotifications() {
             try {
@@ -76,7 +86,11 @@
                 const response = await fetch(API_URL, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ "type":"resident", id })
+                    body: JSON.stringify({ 
+                        "type":"resident", 
+                        id,
+                        csrf_token: CSRF_TOKEN
+                    })
                 });
                 if (!response.ok) {
                     throw new Error('Failed to read notification');
@@ -102,32 +116,32 @@
 
                 console.log('Loading QR codes:', data.length, 'items');
 
-                // Create a proper grid container
+                // Create Bootstrap grid layout
                 container.innerHTML = '';
-                container.className = 'qr-grid-container';
                 
                 data.forEach(qr => {
                     const cardDiv = document.createElement('div');
-                    cardDiv.className = 'qr-card-item';
+                    cardDiv.className = 'col-lg-4 col-md-6 col-sm-12 mb-3';
                     cardDiv.innerHTML = `
-                        <div class="card qr-card-uniform">
-                            <div class="card-body">
-                                <div class="qr-image-container">
-                                    <img src="../qr/${qr.token}.png" alt="QR Code" class="qr-image">
+                        <div class="card h-100">
+                            <div class="card-body d-flex flex-column>
+                                <div class="text-center mb-3">
+                                    <img src="../qr/${qr.token}.png" alt="QR Code" class="img-fluid" style="max-width: 120px; max-height: 120px;">
                                 </div>
-                                <div class="qr-content">
-                                    <div class="qr-field"><strong>ID:</strong> ${qr.id}</div>
-                                    <div class="qr-field"><strong>Token:</strong> ${qr.token}</div>
-                                    <div class="qr-field"><strong>Expires:</strong> ${qr.expiry}</div>
-                                    <div class="qr-field"><strong>Visitor:</strong> ${qr.intended_visitor || 'N/A'}</div>
-                                    <div class="qr-field"><strong>Car Plate:</strong> ${qr.plate_id || 'N/A'}</div>
-                                    <div class="qr-field"><strong>Exit Status:</strong> 
+                                <div class="flex-grow-1">
+                                    <div class="mb-2"><strong>ID:</strong> ${qr.id}</div>
+                                    <div class="mb-2"><strong>Token:</strong> <small class="text-muted">${qr.token}</small></div>
+                                    <div class="mb-2"><strong>Expires:</strong> ${qr.expiry}</div>
+                                    <div class="mb-2"><strong>Visitor:</strong> ${qr.intended_visitor || 'N/A'}</div>
+                                    <div class="mb-2"><strong>Car Plate:</strong> ${qr.plate_id || 'N/A'}</div>
+                                    <div class="mb-3">
+                                        <strong>Exit Status:</strong> 
                                         <span class="badge ${qr.is_blocked == 1 ? 'bg-danger' : 'bg-success'}">
                                             ${qr.is_blocked == 1 ? 'Exit Blocked' : 'Normal'}
                                         </span>
                                     </div>
                                 </div>
-                                <div class="qr-actions">
+                                <div class="d-grid gap-2">
                                     <button onclick="revokeInvite(${qr.id})" class="btn btn-danger btn-sm">Delete</button>
                                     <button onclick="window.location.href='editQR.php?id=${qr.id}&token=${qr.token}&plate=${qr.plate_id}&visitor=${qr.intended_visitor}&date=${qr.expiry}&is_blocked=${qr.is_blocked}'" class="btn btn-outline-primary btn-sm">Edit QR</button>
                                     <button onclick="toggleExitBlock(${qr.id}, ${qr.is_blocked})" class="btn ${qr.is_blocked == 1 ? 'btn-warning' : 'btn-outline-warning'} btn-sm">
@@ -150,7 +164,11 @@
                     const response = await fetch(API_URL, {
                         method: 'DELETE',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ "type":"resident", id })
+                        body: JSON.stringify({ 
+                            "type":"resident", 
+                            id,
+                            csrf_token: CSRF_TOKEN
+                        })
                     });
                     if (!response.ok) {
                         throw new Error('Failed to delete QR');
@@ -176,7 +194,8 @@
                         body: JSON.stringify({ 
                             "type": "toggle_exit_block", 
                             id, 
-                            is_blocked: newStatus 
+                            is_blocked: newStatus,
+                            csrf_token: CSRF_TOKEN
                         })
                     });
                     if (!response.ok) {

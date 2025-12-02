@@ -4,16 +4,21 @@
 $current_page = $current_page ?? '';
 $access_level = $_SESSION['access_level'] ?? 1;
 ?>
-<!-- Sidebar Toggle Button -->
-<button class="btn btn-primary position-fixed" id="sidebarToggle" style="top: 80px; left: 260px; z-index: 1050; width: 40px; height: 40px; padding: 0; display: flex; align-items: center; justify-content: center; transition: left 0.3s ease; border-radius: 50%; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
-    <i class="bi bi-list" id="toggleIcon" style="font-size: 1.2rem; color: white;"></i>
-</button>
+
 
 <!-- Sidebar -->
-<div id="sidebar" class="d-flex flex-column bg-white position-fixed" style="width: 250px; height: calc(100vh - 70px); top: 70px; left: 0; border-radius:0; box-shadow: 2px 0 8px rgba(0,0,0,0.1); justify-content:space-between; z-index: 1040; transition: width 0.3s ease, transform 0.3s ease;">
-    <div class="p-3">
+<div id="sidebar" class="d-flex flex-column bg-white position-fixed">
+    <div class="p-3" style="padding-top: 90px;">
+        <!-- Dock Button (Desktop & Mobile) -->
+        <button class="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-center rounded-circle sidebar-dock-btn" id="sidebarToggle" style="width: 32px; height: 32px; margin-bottom: 1rem;">
+            <i class="bi bi-chevron-left" id="toggleIcon"></i>
+        </button>
+        
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h4 class="mb-0 text-center flex-grow-1 sidebar-text">Welcome,<br><?=$_SESSION['user']?></h4>
+            <h4 class="mb-0 text-center flex-grow-1 sidebar-text">
+                <span class="d-none d-md-inline">Welcome,<br><?=$_SESSION['user']?></span>
+                <span class="d-md-none">Welcome</span>
+            </h4>
         </div>
         <hr class="my-3 sidebar-divider">
 
@@ -72,31 +77,50 @@ document.addEventListener('DOMContentLoaded', function() {
         isCollapsed = !isCollapsed;
         if (isCollapsed) {
             sidebar.style.width = '70px';
-            if (mainContent) mainContent.style.marginLeft = '70px';
+            if (mainContent) {
+                mainContent.style.marginLeft = '70px';
+                mainContent.classList.remove('expanded');
+                mainContent.classList.add('collapsed');
+            }
             toggleIcon.className = 'bi bi-chevron-right';
             sidebarTexts.forEach(t => t.style.display = 'none');
             document.querySelector('.sidebar-divider').style.display = 'none';
             sidebarButtons.forEach(b => { b.style.justifyContent = 'center'; b.style.padding = '8px'; });
-            sidebarToggle.style.left = '80px';
+            // Button stays in sidebar - no positioning needed
         } else {
             sidebar.style.width = '250px';
-            if (mainContent) mainContent.style.marginLeft = '250px';
+            if (mainContent) {
+                mainContent.style.marginLeft = '250px';
+                mainContent.classList.remove('collapsed');
+                mainContent.classList.add('expanded');
+            }
             toggleIcon.className = 'bi bi-chevron-left';
             sidebarTexts.forEach(t => t.style.display = 'inline');
             document.querySelector('.sidebar-divider').style.display = 'block';
             sidebarButtons.forEach(b => { b.style.justifyContent = 'flex-start'; b.style.padding = ''; });
-            sidebarToggle.style.left = '260px';
+            // Button stays in sidebar - no positioning needed
         }
     }
 
     function handleResize() {
         if (window.innerWidth < 768) {
-            sidebar.style.width = '250px';
-            sidebar.style.transform = 'translateX(-100%)';
-            if (mainContent) mainContent.style.marginLeft = '0';
-            toggleIcon.className = 'bi bi-list';
-            sidebarTexts.forEach(t => t.style.display = 'inline');
+            // Mobile: Use collapse/expand behavior like desktop, but no margin manipulation
+            sidebar.style.transform = 'translateX(0)';
+            if (!isCollapsed) {
+                sidebar.style.width = '250px';
+                toggleIcon.className = 'bi bi-chevron-left';
+                sidebarTexts.forEach(t => t.style.display = 'inline');
+                document.querySelector('.sidebar-divider').style.display = 'block';
+                sidebarButtons.forEach(b => { b.style.justifyContent = 'flex-start'; b.style.padding = ''; });
+            } else {
+                sidebar.style.width = '70px';
+                toggleIcon.className = 'bi bi-chevron-right';
+                sidebarTexts.forEach(t => t.style.display = 'none');
+                document.querySelector('.sidebar-divider').style.display = 'none';
+                sidebarButtons.forEach(b => { b.style.justifyContent = 'center'; b.style.padding = '8px'; });
+            }
         } else {
+            // Desktop: collapse/expand behavior
             sidebar.style.transform = 'translateX(0)';
             if (!isCollapsed) {
                 sidebar.style.width = '250px';
@@ -112,14 +136,39 @@ document.addEventListener('DOMContentLoaded', function() {
 
     sidebarToggle.addEventListener('click', function() {
         if (window.innerWidth < 768) {
-            sidebar.style.transform = (sidebar.style.transform === 'translateX(0)') 
-                ? 'translateX(-100%)' : 'translateX(0)';
+            // Mobile: Use collapse/expand behavior instead of slide in/out
+            toggleSidebar();
         } else {
             toggleSidebar();
         }
     });
 
     window.addEventListener('resize', handleResize);
+    
+    // Initialize sidebar state
+    if (window.innerWidth <= 768) {
+        // Mobile: Start with sidebar expanded and visible
+        sidebar.style.transform = 'translateX(0)';
+        sidebar.style.width = '250px';
+        sidebar.classList.add('show');
+        toggleIcon.className = 'bi bi-chevron-left';
+        sidebarTexts.forEach(t => t.style.display = 'inline');
+        document.querySelector('.sidebar-divider').style.display = 'block';
+        sidebarButtons.forEach(b => { b.style.justifyContent = 'flex-start'; b.style.padding = ''; });
+        if (mainContent) {
+            mainContent.classList.remove('collapsed', 'expanded');
+        }
+    } else {
+        // Desktop: Ensure sidebar starts visible
+        sidebar.style.transform = 'translateX(0)';
+        sidebar.classList.add('show');
+        if (mainContent) {
+            mainContent.classList.remove('collapsed');
+            mainContent.classList.add('expanded');
+        }
+    }
+    
     handleResize();
 });
+
 </script>
