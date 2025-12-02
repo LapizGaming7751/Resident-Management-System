@@ -1,191 +1,658 @@
-<?php session_start(); ?>
+<?php
+// Include secure configuration
+require_once '../config.php';
 
-<html>
-    <head>
-        <title>Admin Management</title>
-    </head>
-    <body>
-        <h1>Welcome, <?=$_SESSION['user']?></h1>
+configureSecureSession();
 
-        <h2>Manage Logs</h2>
-        <div id="logs">
+if (!isset($_SESSION['id']) || $_SESSION['type'] !== 'admin') {
+    echo '<div style="color:red;text-align:center;margin-top:2em;">Error: Admin session not found. Please log in again.</div>';
+    exit;
+}
 
+// Generate CSRF token for admin management
+$csrf_token = generateCSRFToken();
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="../ico/house-icon.ico">
+    <title>Admin Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="../css.css">
+</head>
+<body>
+<?php include('../topbar.php'); ?>
+
+<div class="main-content">
+    <?php $current_page = 'logs'; include('sidebar.php'); ?>
+
+    <!-- Row for Residents, Security, Admins -->
+    <div class="container-fluid p-4">
+        <div class="row g-4">
+    <!-- Residents -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+                <h5 class="mb-0">Residents</h5>
+                <button class="btn btn-sm btn-primary w-100 w-md-auto"
+                        onclick="window.location.href='registerResident.php'">
+                    + Create Invite
+                </button>
+            </div>
+            <div class="p-2">
+                <input type="text" id="residentSearch" class="form-control" placeholder="Search residents...">
+            </div>
+            <div class="card-body" id="residents" style="max-height:400px; overflow-y:auto;">
+                <p class="text-muted">Loading residents...</p>
+            </div>
         </div>
+    </div>
 
-        <h2>Manage Residents</h2>
-        <div id="residents">
-
+    <!-- Security -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+                <h5 class="mb-0">Security</h5>
+                <button class="btn btn-sm btn-primary w-100 w-md-auto"
+                        onclick="window.location.href='registerSecurity.php'">
+                    + Create Invite
+                </button>
+            </div>
+            <div class="p-2">
+                <input type="text" id="securitySearch" class="form-control" placeholder="Search security...">
+            </div>
+            <div class="card-body" id="security" style="max-height:400px; overflow-y:auto;">
+                <p class="text-muted">Loading security staff...</p>
+            </div>
         </div>
-        <button onclick="window.location.href='registerResident.php'">Register a Resident</button>
+    </div>
 
-        <?php if($_SESSION['access_level']>= 2){ ?>
-
-        <h2>Manage Admins</h2>
-        <div id="admins">
-
+    <!-- Admins -->
+    <?php if ($_SESSION['access_level'] >= 2): ?>
+    <div class="col-lg-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+                <h5 class="mb-0">Admins</h5>
+                <button class="btn btn-sm btn-primary w-100 w-md-auto"
+                        onclick="window.location.href='registerAdmin.php'">
+                    + Register Admin
+                </button>
+            </div>
+            <div class="p-2">
+                <input type="text" id="adminSearch" class="form-control" placeholder="Search admins...">
+            </div>
+            <div class="card-body" id="admins" style="max-height:400px; overflow-y:auto;">
+                <p class="text-muted">Loading admins...</p>
+            </div>
         </div>
-        <button onclick="window.location.href='registerAdmin.php'">Register an Admin</button>
+    </div>
+    <?php endif; ?>
+        </div>
+    </div>
 
-        <?php } ?>
+<!-- Blacklist Management Panel -->
+<div class="container-fluid px-4">
+    <div class="card p-4">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-2">
+            <h1 class="mb-0">Blocked Car Plates</h1>
+            <button class="btn btn-danger w-100 w-md-auto" onclick="showAddBlacklistModal()">+ Block Car Plate</button>
+        </div>
+        
+        <div class="mb-3">
+            <input type="text" id="blacklistSearch" class="form-control" placeholder="Search blocked car plates...">
+        </div>
+        
+        <div class="card-body" id="blacklist" style="max-height:400px; overflow-y:auto;">
+            <p class="text-muted">Loading blocked car plates...</p>
+        </div>
+    </div>
+</div>
 
-        <button onclick="window.location.href='logout.php';">Logout</button>
-    </body>
+<!-- Add Blacklist Modal -->
+<div class="modal fade" id="addBlacklistModal" tabindex="-1" aria-labelledby="addBlacklistModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addBlacklistModalLabel">Block Car Plate</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addBlacklistForm">
+                    <div class="mb-3">
+                        <label for="blacklistPlate" class="form-label">Car Plate Number</label>
+                        <input type="text" class="form-control" id="blacklistPlate" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="blacklistReason" class="form-label">Reason for Blocking</label>
+                        <textarea class="form-control" id="blacklistReason" rows="3" placeholder="Enter reason for blocking this car plate..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" onclick="addBlacklist()">Block Car Plate</button>
+            </div>
+        </div>
+    </div>
+</div>
 
-    <script>
-        const API_URL = 'https://siewyaoying.synergy-college.org/Finals_CheckInSystem/api.php';
+<!-- Invite Codes Panel (full width, underneath) -->
+<div class="container-fluid px-4 mt-4">
+    <div class="card p-4">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-2">
+            <h1 class="mb-0">Invite Codes</h1>
+            <div class="d-flex flex-column flex-md-row gap-2 w-100 w-md-auto">
+                <button class="btn btn-primary" onclick="window.location.href='registerResident.php'">Create Resident Invite</button>
+                <button class="btn btn-primary" onclick="window.location.href='registerSecurity.php'">Create Security Invite</button>
+            </div>
+        </div>
+        
+        <!-- Invite Statistics -->
+        <div class="row g-3 mb-4" id="inviteStats">
+            <div class="col-6 col-md-3">
+                <div class="card bg-warning text-white">
+                    <div class="card-body text-center p-3">
+                        <h6 class="card-title mb-2">Pending</h6>
+                        <h4 id="pendingCount" class="mb-0">-</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body text-center p-3">
+                        <h6 class="card-title mb-2">Accepted</h6>
+                        <h4 id="acceptedCount" class="mb-0">-</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card bg-danger text-white">
+                    <div class="card-body text-center p-3">
+                        <h6 class="card-title mb-2">Expired</h6>
+                        <h4 id="expiredCount" class="mb-0">-</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card bg-info text-white">
+                    <div class="card-body text-center p-3">
+                        <h6 class="card-title mb-2">Total</h6>
+                        <h4 id="totalCount" class="mb-0">-</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row g-2 mb-3">
+            <div class="col-md-3">
+                <select id="inviteField" class="form-select">
+                    <option value="all">All Fields</option>
+                    <option value="code">Invite Code</option>
+                    <option value="user_type">User Type</option>
+                    <option value="email">Email</option>
+                    <option value="room_code">Room Code</option>
+                    <option value="created_by_name">Created By</option>
+                    <option value="created_at">Created At</option>
+                    <option value="expires_at">Expires At</option>
+                    <option value="is_used">Status</option>
+                </select>
+            </div>
+            <div class="col-md-9">
+                <input type="text" id="inviteSearch" class="form-control" placeholder="Search invite codes...">
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped">
+                <thead class="table-light">
+                    <tr>
+                        <th><i class="bi bi-key"></i> Invite Code</th>
+                        <th><i class="bi bi-person-badge"></i> User Type</th>
+                        <th><i class="bi bi-envelope"></i> Email</th>
+                        <th><i class="bi bi-house"></i> Room Code</th>
+                        <th><i class="bi bi-person-plus"></i> Created By</th>
+                        <th><i class="bi bi-calendar-plus"></i> Created At</th>
+                        <th><i class="bi bi-calendar-x"></i> Expires At</th>
+                        <th><i class="bi bi-info-circle"></i> Status</th>
+                        <th><i class="bi bi-gear"></i> Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="inviteEntry"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
 
-        function getResidents(){
-            fetch(`${API_URL}?type=admin&fetch=resident`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+    <!-- Logs Panel (full width, underneath) -->
+    <div class="container-fluid px-4 mt-4">
+        <div class="card p-4">
+            <h1 class="mb-4 text-center">Visitor Logs</h1>
+            <div class="row g-2 mb-3">
+                <div class="col-md-3">
+                    <select id="logField" class="form-select">
+                        <option value="all">All Fields</option>
+                        <option value="id">ID</option>
+                        <option value="token">Token</option>
+                        <option value="intended_visitor">Intended Visitor</option>
+                        <option value="scan_time">Scan Time</option>
+                        <option value="scan_type">Scan Type</option>
+                        <option value="scanner_username">Responsible Scanner</option>
+                        <option value="created_by_username">QR Creator</option>
+                    </select>
+                </div>
+                <div class="col-md-9">
+                    <input type="text" id="logSearch" class="form-control" placeholder="Search logs...">
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Token</th>
+                            <th>Intended Visitor</th>
+                            <th>Scan Time</th>
+                            <th>Scan Type</th>
+                            <th>Responsible Scanner</th>
+                            <th>QR Creator</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logEntry"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Use relative URL to avoid hardcoded URLs
+const API_URL = '../api.php';
+const CSRF_TOKEN = '<?= $csrf_token ?>';
+
+// ---------- Residents ----------
+let residentsData = [];
+function renderResidents(filtered = null) {
+    const container = document.getElementById('residents');
+    container.innerHTML = '';
+    (filtered || residentsData).forEach(resident => {
+        const div = document.createElement('div');
+        div.className = "d-flex justify-content-between align-items-center border-bottom py-2";
+        const statusBadge = resident.is_active ? 
+            '<span class="badge bg-success">Active</span>' : 
+            '<span class="badge bg-secondary">Inactive</span>';
+        
+        div.innerHTML = `
+            <div class="d-flex flex-column">
+                <div class="d-flex align-items-center">
+                    <span class="fw-bold">${resident.user}</span>
+                    <span class="badge bg-primary ms-2">ID: ${resident.id}</span>
+                    ${statusBadge}
+                </div>
+                <div class="text-muted small">
+                    <i class="bi bi-envelope"></i> ${resident.email}
+                </div>
+                <div class="text-muted small">
+                    <i class="bi bi-house"></i> Room: <span class="fw-bold text-dark">${resident.room_code}</span>
+                </div>
+            </div>
+            <div>
+                <button class="btn btn-sm btn-outline-secondary" onclick="window.location.href='editResident.php?id=${resident.id}&name=${resident.user}&room=${resident.room_code}&email=${resident.email}'">Edit</button>
+                <button class="btn btn-sm btn-outline-danger" onclick="deleteResident(${resident.id})">Delete</button>
+            </div>`;
+        container.appendChild(div);
+    });
+}
+function getResidents(){
+    fetch(`${API_URL}?type=admin&fetch=resident`)
+        .then(r=>r.json())
+        .then(data=>{ residentsData = data; renderResidents(); });
+}
+document.getElementById('residentSearch').addEventListener('input', e=>{
+    const q = e.target.value.toLowerCase();
+    renderResidents(residentsData.filter(r => Object.values(r).some(v=>String(v).toLowerCase().includes(q))));
+});
+
+// ---------- Security ----------
+let securityData = [];
+function renderSecurity(filtered = null) {
+    const container = document.getElementById('security');
+    container.innerHTML = '';
+    (filtered || securityData).forEach(sec => {
+        const div = document.createElement('div');
+        div.className = "d-flex justify-content-between align-items-center border-bottom py-2";
+        const statusBadge = sec.is_active ? 
+            '<span class="badge bg-success">Active</span>' : 
+            '<span class="badge bg-secondary">Inactive</span>';
+        
+        div.innerHTML = `
+            <div class="d-flex flex-column">
+                <div class="d-flex align-items-center">
+                    <span class="fw-bold">${sec.user}</span>
+                    <span class="badge bg-info ms-2">ID: ${sec.id}</span>
+                    ${statusBadge}
+                </div>
+                <div class="text-muted small">
+                    <i class="bi bi-envelope"></i> ${sec.email}
+                </div>
+            </div>
+            <div>
+                <button class="btn btn-sm btn-outline-secondary" onclick="window.location.href='editSecurity.php?id=${sec.id}&name=${sec.user}&email=${sec.email}'">Edit</button>
+                <button class="btn btn-sm btn-outline-danger" onclick="deleteSecurity(${sec.id})">Delete</button>
+            </div>`;
+        container.appendChild(div);
+    });
+}
+function getSecurity(){
+    fetch(`${API_URL}?type=admin&fetch=security`)
+        .then(r=>r.json())
+        .then(data=>{ securityData = data; renderSecurity(); });
+}
+document.getElementById('securitySearch').addEventListener('input', e=>{
+    const q = e.target.value.toLowerCase();
+    renderSecurity(securityData.filter(s => Object.values(s).some(v=>String(v).toLowerCase().includes(q))));
+});
+
+// ---------- Admins ----------
+let adminsData = [];
+function renderAdmins(filtered = null) {
+    const container = document.getElementById('admins');
+    container.innerHTML = '';
+    const currentAdminId = <?= json_encode($_SESSION['id']) ?>;
+    (filtered || adminsData).forEach(admin => {
+        const actions = (admin.id != currentAdminId)
+            ? `<button class="btn btn-sm btn-outline-secondary" onclick="window.location.href='editAdmin.php?id=${admin.id}&name=${admin.user}&level=${admin.access_level}'">Edit</button>
+               <button class="btn btn-sm btn-outline-danger" onclick="deleteAdmin(${admin.id})">Delete</button>`
+            : `<span class="text-muted">You</span>`;
+        const div = document.createElement('div');
+        div.className = "d-flex justify-content-between align-items-center border-bottom py-2";
+        div.innerHTML = `<span>ID: ${admin.id} | ${admin.user} (Level: ${admin.access_level})</span><span>${actions}</span>`;
+        container.appendChild(div);
+    });
+}
+function getAdmins(){
+    fetch(`${API_URL}?type=admin&fetch=admin`)
+        .then(r=>r.json())
+        .then(data=>{ adminsData = data; renderAdmins(); });
+}
+<?php if ($_SESSION['access_level'] >= 2): ?>
+document.getElementById('adminSearch').addEventListener('input', e=>{
+    const q = e.target.value.toLowerCase();
+    renderAdmins(adminsData.filter(a => Object.values(a).some(v=>String(v).toLowerCase().includes(q))));
+});
+<?php endif; ?>
+
+// ---------- Logs ----------
+let logsData = [];
+function renderLogs(filtered = null) {
+    const container = document.getElementById('logEntry');
+    container.innerHTML = '';
+    (filtered || logsData).forEach(log => {
+        const entry = document.createElement('tr');
+        entry.innerHTML = `
+            <td>${log.id}</td>
+            <td>${log.token}</td>
+            <td>${log.intended_visitor}</td>
+            <td>${log.scan_time}</td>
+            <td>${log.scan_type}</td>
+            <td>${log.scanner_username}</td>
+            <td>${log.created_by_username || 'N/A'} ${log.created_by_room ? '(' + log.created_by_room + ')' : ''}</td>`;
+        container.appendChild(entry);
+    });
+}
+function getLogs(){
+    fetch(`${API_URL}?type=admin&fetch=log`)
+        .then(r=>r.json())
+        .then(data=>{ logsData = data; renderLogs(); });
+}
+document.getElementById('logSearch').addEventListener('input', filterLogs);
+document.getElementById('logField').addEventListener('change', filterLogs);
+function filterLogs(){
+    const query = document.getElementById('logSearch').value.toLowerCase();
+    const field = document.getElementById('logField').value;
+    let filtered;
+    if (!query) filtered = logsData;
+    else if (field === 'all') filtered = logsData.filter(log =>
+        Object.values(log).some(v=>String(v).toLowerCase().includes(query)));
+    else filtered = logsData.filter(log => String(log[field]).toLowerCase().includes(query));
+    renderLogs(filtered);
+}
+
+// ---------- Invite Codes ----------
+let inviteCodesData = [];
+function renderInviteCodes(filtered = null) {
+    const container = document.getElementById('inviteEntry');
+    container.innerHTML = '';
+    (filtered || inviteCodesData).forEach(invite => {
+        console.log('Processing invite:', invite.code, 'is_used:', invite.is_used, 'type:', typeof invite.is_used);
+        
+        const now = new Date();
+        const expiresAt = new Date(invite.expires_at);
+        const isExpired = expiresAt < now;
+        
+        let status, statusClass;
+        if (invite.is_used == 1 || invite.is_used === '1' || invite.is_used === true) {
+            status = 'Accepted';
+            statusClass = 'bg-success';
+        } else if (isExpired) {
+            status = 'Expired';
+            statusClass = 'bg-danger';
+        } else {
+            status = 'Pending';
+            statusClass = 'bg-warning';
+        }
+        
+        const roomCode = invite.room_code || '-';
+        const usedAt = invite.used_at ? new Date(invite.used_at).toLocaleString() : '-';
+        const timeRemaining = !invite.is_used && !isExpired ? 
+            Math.ceil((expiresAt - now) / (1000 * 60 * 60)) + 'h left' : '';
+        
+        const entry = document.createElement('tr');
+        entry.innerHTML = `
+            <td>
+                <code class="bg-light p-1 rounded">${invite.code}</code>
+                ${timeRemaining ? `<br><small class="text-muted">${timeRemaining}</small>` : ''}
+            </td>
+            <td><span class="badge bg-${invite.user_type === 'resident' ? 'primary' : 'info'}">${invite.user_type}</span></td>
+            <td>
+                <i class="bi bi-envelope"></i> ${invite.email}
+            </td>
+            <td>
+                ${invite.user_type === 'resident' ? 
+                    `<i class="bi bi-house"></i> ${roomCode}` : 
+                    '<span class="text-muted">-</span>'
                 }
-                return response.json();
-            })
-            .then(data => {
-                const container1 = document.getElementById('residents');
-                container1.innerHTML = '';
-                data.forEach(resident => {
-                    const div = document.createElement('div');
-                    div.innerHTML = `
-                        <p>ID: ${resident.id} | Resident Name: ${resident.user} | Room Code: ${resident.room_code}
-                        <button onclick="window.location.href='editResident.php?id=${resident.id}&name=${resident.user}&room=${resident.room_code}'">Edit Resident</button>
-                        <button onclick="deleteResident(${resident.id})">Delete</button></p>
-                        `;
-                    container1.appendChild(div);
-                });
-            })
-            .catch(error => {
-                console.error('Error fetching Residents:', error);
-            });
-        }
-
-        function getLogs(){
-            fetch(`${API_URL}?type=admin&fetch=log`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+            </td>
+            <td>${invite.created_by_name || 'Unknown'}</td>
+            <td>${new Date(invite.created_at).toLocaleString()}</td>
+            <td>${expiresAt.toLocaleString()}</td>
+            <td>
+                <span class="badge ${statusClass}">${status}</span>
+                ${invite.is_used ? `<br><small class="text-muted">Used: ${usedAt}</small>` : ''}
+            </td>
+            <td>
+                ${!invite.is_used ? 
+                    `<button class="btn btn-sm btn-outline-danger" onclick="deleteInviteCode(${invite.id})" title="Delete unused invite">
+                        <i class="bi bi-trash"></i>
+                    </button>` : 
+                    `<span class="text-muted">
+                        <i class="bi bi-check-circle text-success"></i> Completed
+                    </span>`
                 }
-                return response.json();
+            </td>`;
+        container.appendChild(entry);
+    });
+}
+function getInviteCodes(){
+    fetch(`${API_URL}?type=admin&fetch=invite_codes`)
+        .then(r=>r.json())
+        .then(data=>{ 
+            console.log('Invite codes data received:', data);
+            inviteCodesData = data; 
+            renderInviteCodes(); 
+            updateInviteStats();
+        });
+}
+
+function updateInviteStats() {
+    const now = new Date();
+    let pending = 0, accepted = 0, expired = 0;
+    
+    inviteCodesData.forEach(invite => {
+        const expiresAt = new Date(invite.expires_at);
+        const isExpired = expiresAt < now;
+        
+        if (invite.is_used == 1 || invite.is_used === '1' || invite.is_used === true) {
+            accepted++;
+        } else if (isExpired) {
+            expired++;
+        } else {
+            pending++;
+        }
+    });
+    
+    document.getElementById('pendingCount').textContent = pending;
+    document.getElementById('acceptedCount').textContent = accepted;
+    document.getElementById('expiredCount').textContent = expired;
+    document.getElementById('totalCount').textContent = inviteCodesData.length;
+}
+document.getElementById('inviteSearch').addEventListener('input', filterInviteCodes);
+document.getElementById('inviteField').addEventListener('change', filterInviteCodes);
+function filterInviteCodes(){
+    const query = document.getElementById('inviteSearch').value.toLowerCase();
+    const field = document.getElementById('inviteField').value;
+    let filtered;
+    if (!query) filtered = inviteCodesData;
+    else if (field === 'all') filtered = inviteCodesData.filter(invite =>
+        Object.values(invite).some(v=>String(v).toLowerCase().includes(query)));
+    else filtered = inviteCodesData.filter(invite => String(invite[field]).toLowerCase().includes(query));
+    renderInviteCodes(filtered);
+}
+
+// ---------- Blacklist Functions ----------
+let blacklistData = [];
+function renderBlacklist(filtered = null) {
+    const container = document.getElementById('blacklist');
+    container.innerHTML = '';
+    (filtered || blacklistData).forEach(item => {
+        const div = document.createElement('div');
+        div.className = "d-flex justify-content-between align-items-center border-bottom py-2";
+        const reasonText = item.reason ? ` | Reason: ${item.reason}` : '';
+        div.innerHTML = `
+            <div>
+                <div><strong>ID: ${item.id} | ${item.blacklisted_car_plate} | Added: ${new Date(item.created_at).toLocaleDateString()}</strong></div>
+                ${reasonText ? `<div class="text-muted small">${reasonText}</div>` : ''}
+            </div>
+            <span>
+                <button class="btn btn-sm btn-outline-danger" onclick="deleteBlacklist(${item.id})">Remove</button>
+            </span>
+        `;
+        container.appendChild(div);
+    });
+}
+
+function getBlacklist(){
+    fetch(`${API_URL}?type=admin&fetch=blacklist`)
+        .then(r=>r.json())
+        .then(data=>{ blacklistData = data; renderBlacklist(); });
+}
+
+function showAddBlacklistModal() {
+    const modal = new bootstrap.Modal(document.getElementById('addBlacklistModal'));
+    modal.show();
+}
+
+function addBlacklist() {
+    console.log('addBlacklist function called'); // Debug log
+    const plate = document.getElementById('blacklistPlate').value.trim();
+    const reason = document.getElementById('blacklistReason').value.trim();
+    console.log('Plate value:', plate); // Debug log
+    console.log('Reason value:', reason); // Debug log
+    
+    if (!plate) {
+        alert('Please enter a car plate number');
+        return;
+    }
+    
+    console.log('Sending request to:', API_URL); // Debug log
+    
+    fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            type: 'admin', 
+            fetch: 'blacklist', 
+            plate: plate, 
+            reason: reason,
+            csrf_token: CSRF_TOKEN
+        })
+    })
+    .then(r => {
+        console.log('Response status:', r.status); // Debug log
+        return r.json();
+    })
+    .then(data => {
+        console.log('Response data:', data); // Debug log
+        alert(data.message);
+        if (!data.error) {
+            document.getElementById('blacklistPlate').value = '';
+            document.getElementById('blacklistReason').value = '';
+            bootstrap.Modal.getInstance(document.getElementById('addBlacklistModal')).hide();
+            getBlacklist();
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error); // Debug log
+        alert('Error: ' + error.message);
+    });
+}
+
+function deleteBlacklist(id) {
+    if (confirm("Remove this car plate from blacklist?")) {
+        fetch(API_URL, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                type: 'admin', 
+                fetch: 'blacklist', 
+                id: id,
+                csrf_token: CSRF_TOKEN
             })
-            .then(data => {
-                const container3 = document.getElementById('logs');
-                container3.innerHTML = '';
-                data.forEach(log => {
-                    const div = document.createElement('div');
-                    div.innerHTML = `
-                        <p>ID: ${log.id} | Token: ${log.token} | Scanned at: ${log.scan_time}</p>
-                        `;
-                    container3.appendChild(div);
-                });
-            })
-            .catch(error => {
-                console.error('Error fetching Residents:', error);
-            });
-        }
+        })
+        .then(r=>r.json())
+        .then(d=>{
+            alert(d.message);
+            getBlacklist();
+        });
+    }
+}
 
-        function getAdmins(){
-            fetch(`${API_URL}?type=admin&fetch=admin`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                const container2 = document.getElementById('admins');
-                container2.innerHTML = '';
-                data.forEach(admin => {
-                    const div = document.createElement('div');
-                    div.innerHTML = `
-                        <p>ID: ${admin.id} | Resident Name: ${admin.user} | Access Level: ${admin.access_level}
-                        <button onclick="window.location.href='editAdmin.php?id=${admin.id}&name=${admin.user}&level=${admin.access_level}'">Edit Admin</button>
-                        <button onclick="deleteAdmin(${admin.id})">Delete</button></p>
-                        `;
-                    container2.appendChild(div);
-                });
-            })
-            .catch(error => {
-                console.error('Error fetching Admins:', error);
-            });
-        }
+// Blacklist search functionality
+document.getElementById('blacklistSearch').addEventListener('input', e=>{
+    const q = e.target.value.toLowerCase();
+    renderBlacklist(blacklistData.filter(item => 
+        Object.values(item).some(v=>String(v).toLowerCase().includes(q))
+    ));
+});
 
-        function deleteResident(id){
-            if(confirm("Sure to revoke this invite?")){
+// ---------- Delete Functions ----------
+function deleteResident(id){ if(confirm("Delete this resident?")){ fetch(API_URL,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'admin',fetch:'resident',id,csrf_token:CSRF_TOKEN})}).then(r=>r.json()).then(d=>{alert(d.message);getResidents();});}}
+function deleteSecurity(id){ if(confirm("Delete this security staff?")){ fetch(API_URL,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'admin',fetch:'security',id,csrf_token:CSRF_TOKEN})}).then(r=>r.json()).then(d=>{alert(d.message);getSecurity();});}}
+function deleteAdmin(id){ if(confirm("Delete this admin?")){ fetch(API_URL,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'admin',fetch:'admin',id,csrf_token:CSRF_TOKEN})}).then(r=>r.json()).then(d=>{alert(d.message);getAdmins();});}}
+function deleteInviteCode(id){ if(confirm("Delete this invite code?")){ fetch(API_URL,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'admin',fetch:'invite_code',id,csrf_token:CSRF_TOKEN})}).then(r=>r.json()).then(d=>{alert(d.message);getInviteCodes();});}}
 
-                fetch(API_URL, {
-                    method: 'DELETE',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ "type":"resident", id })
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Failed to delete resident');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    alert(data.message);
-                    getQR();
-                })
-                .catch(error => {
-                    console.error('Error deleting resident:', error);
-                });
-            }
-        }
+// ---------- Init ----------
+getResidents();
+getSecurity();
+getLogs();
+getInviteCodes();
+getBlacklist();
+<?php if ($_SESSION['access_level'] >= 2): ?>getAdmins();<?php endif; ?>
+</script>
 
-        function deleteResident(id){
-            if(confirm("Sure to delete this REsident?")){
-
-                fetch(API_URL, {
-                    method: 'DELETE',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ "type":"admin","fetch":"resident",id })
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Failed to delete QR');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    alert(data.message);
-                    getQR();
-                })
-                .catch(error => {
-                    console.error('Error deleting QR:', error);
-                });
-            }
-        }
-
-        function deleteAdmin(id){
-            if(confirm("Sure to delete this Admin?")){
-
-                fetch(API_URL, {
-                    method: 'DELETE',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ "type":"admin","fetch":"admin", id })
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Failed to delete QR');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    alert(data.message);
-                    getQR();
-                })
-                .catch(error => {
-                    console.error('Error deleting QR:', error);
-                });
-            }
-        }
-
-        getResidents();
-        getLogs();
-        <?php if($_SESSION['access_level'] >= 2){ ?>
-        getAdmins();
-        <?php } ?>
-    </script>
+<!-- Bootstrap JavaScript -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Mobile JavaScript -->
+<script src="../js/mobile.js"></script>
+</body>
 </html>

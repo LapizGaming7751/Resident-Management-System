@@ -1,0 +1,14 @@
+{
+    "name": "checkin-system/email",
+    "description": "Check-In System with PHPMailer",
+    "type": "project",
+    "authors": [
+        {
+            "name": "Developer",
+            "email": "dev@example.com"
+        }
+    ],
+    "require": {
+        "phpmailer/phpmailer": "^6.10"
+    }
+}

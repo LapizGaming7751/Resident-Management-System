@@ -1,7 +1,13 @@
 <?php
-session_start();
+// Include secure configuration
+require_once '../config.php';
+
+configureSecureSession();
 
 if (isset($_SESSION['type']) && $_SESSION['type']=="resident"){
+    
+    // Generate CSRF token for chat
+    $csrf_token = generateCSRFToken();
 ?>
 <html>
     <head>
@@ -84,7 +90,7 @@ if (isset($_SESSION['type']) && $_SESSION['type']=="resident"){
                 width: 100%;
                 height: 100%;
                 background: rgba(0, 0, 0, 0.9);
-                z-index: 1000;
+                z-index: var(--z-modal);
             }
             .video-container video {
                 width: 100%;
@@ -125,7 +131,9 @@ if (isset($_SESSION['type']) && $_SESSION['type']=="resident"){
         </div>
 
         <script>
-            const API_URL = 'https://siewyaoying.synergy-college.org/Finals_CheckInSystem/api.php';
+            // Use relative URL to avoid hardcoded URLs
+            const API_URL = '../api.php';
+            const CSRF_TOKEN = '<?= $csrf_token ?>';
             let selectedSecurityId = null;
             let selectedSecurityName = null;
             let peerConnection = null;
@@ -189,7 +197,8 @@ if (isset($_SESSION['type']) && $_SESSION['type']=="resident"){
                         type: 'chat',
                         sender_id: <?=$_SESSION['id']?>,
                         receiver_id: selectedSecurityId,
-                        message: message
+                        message: message,
+                        csrf_token: CSRF_TOKEN
                     })
                 })
                 .then(response => response.json())
