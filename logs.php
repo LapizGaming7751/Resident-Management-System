@@ -27,7 +27,8 @@
         </table>
 
         <script>
-            const API_URL = 'https://siewyaoying.synergy-college.org/Finals_CheckInSystem/api.php';
+            // Use relative URL to avoid hardcoded URLs
+            const API_URL = '../api.php';
 
             function getLogs(){
                 fetch(`${API_URL}?type=admin&fetch=log`)
@@ -42,15 +43,24 @@
                     container.innerHTML = '';
                     data.forEach(log => {
                         const entry = document.createElement('tr');
-                        entry.innerHTML = `
-                            <td> ${log.id} </td>
-                            <td> ${log.token} </td>
-                            <td> ${log.intended_visitor} </td>
-                            <td> ${log.plate} </td>
-                            <td> ${log.scan_time} </td>
-                            <td> ${log.scan_type} </td>
-                            <td> ${log.scanner_username} </td>
-                            `;
+                        
+                        // Create cells safely to prevent XSS
+                        const cells = [
+                            log.id || '',
+                            log.token || '',
+                            log.intended_visitor || '',
+                            log.plate || '',
+                            log.scan_time || '',
+                            log.scan_type || '',
+                            log.scanner_username || ''
+                        ];
+                        
+                        cells.forEach(cellData => {
+                            const cell = document.createElement('td');
+                            cell.textContent = cellData; // This automatically escapes HTML
+                            entry.appendChild(cell);
+                        });
+                        
                         container.appendChild(entry);
                 });
             })
